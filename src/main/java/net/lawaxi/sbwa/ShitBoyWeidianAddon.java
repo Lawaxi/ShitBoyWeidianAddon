@@ -2,6 +2,8 @@ package net.lawaxi.sbwa;
 
 import net.lawaxi.Shitboy;
 import net.lawaxi.sbwa.config.ConfigConfig;
+import net.lawaxi.sbwa.handler.NewWeidianSenderHandler;
+import net.lawaxi.sbwa.handler.WeidianHandler;
 import net.lawaxi.sbwa.util.Common;
 import net.mamoe.mirai.console.plugin.Plugin;
 import net.mamoe.mirai.console.plugin.PluginManager;
@@ -12,9 +14,10 @@ public final class ShitBoyWeidianAddon extends JavaPlugin {
     public static final ShitBoyWeidianAddon INSTANCE = new ShitBoyWeidianAddon();
     public static Shitboy INSTANCE_SHITBOY;
     public static ConfigConfig config;
+    public static WeidianHandler weidianHandler;
 
     private ShitBoyWeidianAddon() {
-        super(new JvmPluginDescriptionBuilder("net.lawaxi.shitboyWA", "0.1.0-beta1")
+        super(new JvmPluginDescriptionBuilder("net.lawaxi.shitboyWA", "0.1.0-beta2")
                 .name("ShitBoyWeidianAddon")
                 .author("delay")
                 .dependsOn("net.lawaxi.shitboy", false)
@@ -23,16 +26,16 @@ public final class ShitBoyWeidianAddon extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        initConfig();
         if (loadShitboy()) {
-            INSTANCE_SHITBOY.handlerWeidianSender = new NewHandler();
+            initConfig();
+            INSTANCE_SHITBOY.handlerWeidianSender = new NewWeidianSenderHandler();
         }
-        getLogger().info("Plugin loaded!");
     }
 
     private void initConfig() {
         new Common(getConfigFolder());
         config = new ConfigConfig(resolveConfigFile("config.setting"));
+        weidianHandler = new WeidianHandler();
     }
 
     private boolean loadShitboy() {

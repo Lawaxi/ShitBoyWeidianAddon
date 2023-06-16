@@ -8,3 +8,4 @@ Mirai-Console插件，依赖[Lawaxi/Shitboy](https://github.com/Lawaxi/ShitBoy)�
 
 - alpha1 测试
 - beta1 抽卡
+- beta2 pk

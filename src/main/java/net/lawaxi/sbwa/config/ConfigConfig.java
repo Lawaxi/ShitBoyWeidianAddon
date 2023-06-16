@@ -7,17 +7,23 @@ import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.hutool.setting.Setting;
+import net.lawaxi.sbwa.handler.WeidianHandler;
 import net.lawaxi.sbwa.model.Lottery2;
 import net.lawaxi.sbwa.util.Common;
 
 import java.io.File;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class ConfigConfig extends SimpleSettingConfig {
     public static ConfigConfig INSTANCE;
-
+    //抽卡数据总表
     public ArrayList<ConfigLotteryDocument> lotteryDocuments = new ArrayList<>();
+    //pk数据总表
+    public HashMap<String, JSONObject> pk = new HashMap<>();
 
     public ConfigConfig(File file) {
         super(file);
@@ -35,6 +41,9 @@ public class ConfigConfig extends SimpleSettingConfig {
         if (!documentFolder.exists())
             documentFolder.mkdir();
 
+        lotteryDocuments.clear();
+        pk.clear();
+
         for (Object o : JSONUtil.parseArray(setting.getStr("documents", "lottery", "[]")).toArray()) {
             String id = (String) o;
             File d = new File(documentFolder, id + ".json");
@@ -42,15 +51,23 @@ public class ConfigConfig extends SimpleSettingConfig {
             if (document.getLottery() != null)
                 lotteryDocuments.add(document);
         }
+
+        for (String id : setting.keySet("pk")) {
+            JSONObject o = JSONUtil.parseObj(setting.getStr(id, "pk", "{}"));
+            pk.put(id, o);
+        }
     }
 
+    //抽卡
+
     public String addLotteryByJSON(JSONObject json) {
-        String id = null;
+        String id;
         if (json.containsKey("id")) {
             id = json.getStr("id");
             json.remove("id");
+        } else {
+            id = generateLotteryId();
         }
-        id = getNewRandomId();
         File d = new File(Common.I.documentFolder, id + ".json");
 
         Lottery2 l = Lottery2.construct(id, null, json);
@@ -64,47 +81,66 @@ public class ConfigConfig extends SimpleSettingConfig {
             JSONArray a = JSONUtil.parseArray(setting.getStr("documents", "lottery", "[]"));
             a.add(id);
             setting.setByGroup("documents", "lottery", a.toString());
+            save();
 
             return id;
         }
     }
 
+    public void rmLottery(ConfigLotteryDocument document) {
+        String id = document.id;
+        FileUtil.move(new File(Common.I.documentFolder, id + ".json"),
+                new File(Common.I.historyFolder, id + ".json"), false);
+
+        FileUtil.move(new File(Common.I.picFolder, "id"),
+                new File(Common.I.historyFolder, "id"), true);
+
+        FileUtil.move(new File(Common.I.dataFolder, "id"),
+                new File(Common.I.historyFolder, "id"), true);
+
+        lotteryDocuments.remove(document);
+        JSONArray a = JSONUtil.parseArray(setting.getStr("documents", "lottery", "[]"));
+        a.add(id);
+        setting.setByGroup("documents", "lottery", a.toString());
+        save();
+    }
+
     public Lottery2[] getLotterysByGroupIdAndItemId(long groupId, long item_id) {
-        Lottery2[] a = {};
+        List<Lottery2> a = new ArrayList<>();
         for (ConfigLotteryDocument document : lotteryDocuments) {
             Lottery2 l = document.getLottery();
             if (l != null) {
                 if (ArrayUtil.contains(l.groupIds, groupId) && ArrayUtil.contains(l.item_ids, item_id)) {
-                    a[a.length] = document.getLottery();
+                    a.add(document.getLottery());
                 }
             }
         }
-        return a;
+        return a.toArray(new Lottery2[0]);
     }
 
     public Lottery2[] getLotteryByGroupId(long groupId) {
-        Lottery2[] a = {};
+        List<Lottery2> a = new ArrayList<>();
         for (ConfigLotteryDocument document : lotteryDocuments) {
             Lottery2 l = document.getLottery();
             if (l != null) {
                 if (ArrayUtil.contains(l.groupIds, groupId)) {
-                    a[a.length] = document.getLottery();
+                    a.add(document.getLottery());
                 }
             }
         }
-        return a;
+        return a.toArray(new Lottery2[0]);
     }
 
     public Lottery2[] getAllNonNullLotterys() {
-        Lottery2[] a = {};
+        List<Lottery2> a = new ArrayList<>();
         for (ConfigLotteryDocument document : lotteryDocuments) {
             if (document.getLottery() != null)
-                a[a.length] = document.getLottery();
+                a.add(document.getLottery());
         }
-        return a;
+        return a.toArray(new Lottery2[0]);
     }
 
-    public String getNewRandomId() {
+    public String generateLotteryId() {
         String a = RandomUtil.randomString(5);
         while (getLotteryById(a) != null) {
             a = RandomUtil.randomString(5);
@@ -122,4 +158,121 @@ public class ConfigConfig extends SimpleSettingConfig {
         }
         return null;
     }
+
+    //pk
+
+    public String addPkByJson(JSONObject json) {
+        String id;
+        if (json.containsKey("id")) {
+            id = json.getStr("id");
+            json.remove("id");
+        } else {
+            id = generatePkId();
+        }
+
+        if (!isValidPK(json))
+            return "null";
+
+        JSONArray opponents = new JSONArray();
+        for (Object o : json.getJSONArray("opponents").toArray()) {
+            JSONObject opponent = JSONUtil.parseObj(o);
+            if (opponent.containsKey("item_id")) {
+                if (!opponent.containsKey("cookie")) {
+                    long stock = WeidianHandler.INSTANCE.getTotalStock(
+                            opponent.getLong("item_id")
+                    );
+                    if (stock != 0L) {
+                        opponent.set("stock", stock);
+                        opponents.add(opponent);
+                        continue;
+                    }
+                }
+            }
+            return "failed";
+        }
+
+        json.set("opponents", opponents);
+        pk.put(id, json);
+        setting.setByGroup(id, "pk", json.toString());
+        save();
+        return id;
+    }
+
+    public boolean rmPk(String id) {
+        if (pk.containsKey(id)) {
+            pk.remove(id);
+            setting.remove(id, "pk");
+            save();
+            return true;
+        } else
+            return false;
+    }
+
+    public boolean editPkByJson(String id, JSONObject json) {
+        if (rmPk(id)) {
+            switch (addPkByJson(json.set("id", id))) {
+                case "null":
+                case "failed":
+                    return false;
+                default:
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    public String generatePkId() {
+        String a = RandomUtil.randomString(5);
+        while (pk.containsKey(a)) {
+            a = RandomUtil.randomString(5);
+        }
+        return a;
+    }
+
+    public boolean isValidPK(JSONObject json) {
+        return json.containsKey("groups")
+                && json.containsKey("name")
+                && json.containsKey("item_id")
+                && json.containsKey("opponents");
+    }
+
+    public JSONObject[] getPkByGroupId(long groupId) {
+        List<JSONObject> j = new ArrayList<>();
+        for (JSONObject pk : pk.values()) {
+            if (isValidPK(pk)) {
+                for (Long g : pk.getBeanList("groups", Long.class)) {
+                    if (g.longValue() == groupId) {
+                        j.add(pk);
+                        break;
+                    }
+                }
+            }
+        }
+        return j.toArray(new JSONObject[0]);
+    }
+
+    public JSONObject[] getPkByGroupIdAndItemId(long groupId, long item_id) {
+        List<JSONObject> j = new ArrayList<>();
+        for (JSONObject pk : pk.values()) {
+            if (isValidPK(pk) && pk.getLong("item_id").longValue() == item_id) {
+                for (Long g : pk.getBeanList("groups", Long.class)) {
+                    if (g.longValue() == groupId) {
+                        j.add(pk);
+                        break;
+                    }
+                }
+            }
+        }
+        return j.toArray(new JSONObject[0]);
+    }
+
+    public Map.Entry<String, JSONObject>[] getAllValidPk() {
+        List<Map.Entry<String, JSONObject>> j = new ArrayList<>();
+        for (Map.Entry<String, JSONObject> pk : pk.entrySet()) {
+            if (isValidPK(pk.getValue()))
+                j.add(pk);
+        }
+        return (Map.Entry<String, JSONObject>[]) j.toArray();
+    }
+
 }

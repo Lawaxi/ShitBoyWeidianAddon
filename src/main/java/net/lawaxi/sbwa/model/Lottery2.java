@@ -47,13 +47,13 @@ public class Lottery2 {
     }
 
     public Gift2[] getGifts(long buyerId) {
-        Gift2[] a = {};
+        List<Gift2> a = new ArrayList<>();
         for (String id : this.document.getData().getGiftIds(buyerId)) {
             Gift2 g = getGiftById(id);
             if (g != null)
-                a[a.length] = g;
+                a.add(g);
         }
-        return a;
+        return a.toArray(new Gift2[0]);
     }
 
     public Gift2 getRandomGift() {
