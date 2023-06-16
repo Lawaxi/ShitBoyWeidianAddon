@@ -25,6 +25,10 @@ public class ConfigConfig extends SimpleSettingConfig {
     //pk数据总表
     public HashMap<String, JSONObject> pk = new HashMap<>();
 
+    //-----------------//
+    public JSONObject binding;
+    public HashMap<String, Long> buyerIdBinded = new HashMap<>();
+
     public ConfigConfig(File file) {
         super(file);
         INSTANCE = this;
@@ -33,6 +37,7 @@ public class ConfigConfig extends SimpleSettingConfig {
     @Override
     public void construct(Setting setting) {
         setting.setByGroup("documents", "lottery", "[]");
+        setting.setByGroup("binding", "lottery", "{}");
     }
 
     @Override
@@ -42,8 +47,10 @@ public class ConfigConfig extends SimpleSettingConfig {
             documentFolder.mkdir();
 
         lotteryDocuments.clear();
+        buyerIdBinded.clear();
         pk.clear();
 
+        //抽卡
         for (Object o : JSONUtil.parseArray(setting.getStr("documents", "lottery", "[]")).toArray()) {
             String id = (String) o;
             File d = new File(documentFolder, id + ".json");
@@ -52,6 +59,12 @@ public class ConfigConfig extends SimpleSettingConfig {
                 lotteryDocuments.add(document);
         }
 
+        this.binding = JSONUtil.parseObj(setting.getStr("binding", "lottery", "{}"));
+        for (String qqId : this.binding.keySet()) {
+            buyerIdBinded.put(qqId, this.binding.getLong(qqId));
+        }
+
+        //pk
         for (String id : setting.keySet("pk")) {
             JSONObject o = JSONUtil.parseObj(setting.getStr(id, "pk", "{}"));
             pk.put(id, o);
@@ -61,11 +74,8 @@ public class ConfigConfig extends SimpleSettingConfig {
     //抽卡
 
     public String addLotteryByJSON(JSONObject json) {
-        String id;
-        if (json.containsKey("id")) {
-            id = json.getStr("id");
-            json.remove("id");
-        } else {
+        String id = json.getStr("id", "");
+        if (id.equals("") || getLotteryById(json.getStr("id")) != null) {
             id = generateLotteryId();
         }
         File d = new File(Common.I.documentFolder, id + ".json");
@@ -159,14 +169,33 @@ public class ConfigConfig extends SimpleSettingConfig {
         return null;
     }
 
+    public long getBindingBuyerId(String qqId) {
+        return buyerIdBinded.getOrDefault(qqId, 0L);
+    }
+
+    public void bindBuyerId(String qqId, long buyerId) {
+        buyerIdBinded.put(qqId, buyerId);
+        binding.set(qqId, buyerId);
+        setting.setByGroup("binding", "lottery", binding.toString());
+        save();
+    }
+
+    public boolean unbindBuyerId(String qqId) {
+        if (buyerIdBinded.containsKey(qqId)) {
+            buyerIdBinded.remove(qqId);
+            binding.remove(qqId);
+            setting.setByGroup("binding", "lottery", binding.toString());
+            save();
+            return true;
+        }
+        return false;
+    }
+
     //pk
 
     public String addPkByJson(JSONObject json) {
-        String id;
-        if (json.containsKey("id")) {
-            id = json.getStr("id");
-            json.remove("id");
-        } else {
+        String id = json.getStr("id", "");
+        if (id.equals("") || pk.containsKey(json.getStr("id"))) {
             id = generatePkId();
         }
 

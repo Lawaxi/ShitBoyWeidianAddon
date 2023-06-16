@@ -11,14 +11,16 @@ import java.util.*;
 
 public class Lottery2 {
     public final String lottery_id;
+    public final String name;
     public final BigDecimal fee;
     public final long[] groupIds;
     public final long[] item_ids;
     public final Map.Entry<BigDecimal, Gift2>[] map;
     public ConfigLotteryDocument document;
 
-    public Lottery2(String lotteryId, BigDecimal fee, long[] groupIds, long[] itemIds, Map.Entry<BigDecimal, Gift2>[] map, ConfigLotteryDocument document) {
+    public Lottery2(String lotteryId, String name, BigDecimal fee, long[] groupIds, long[] itemIds, Map.Entry<BigDecimal, Gift2>[] map, ConfigLotteryDocument document) {
         this.lottery_id = lotteryId;
+        this.name = name;
         this.fee = fee;
         this.groupIds = groupIds;
         this.item_ids = itemIds;
@@ -46,13 +48,14 @@ public class Lottery2 {
         return g;
     }
 
-    public Gift2[] getGifts(long buyerId) {
+    public Gift2[] getOwnedGifts(long buyerId) {
         List<Gift2> a = new ArrayList<>();
         for (String id : this.document.getData().getGiftIds(buyerId)) {
             Gift2 g = getGiftById(id);
             if (g != null)
                 a.add(g);
         }
+        a.sort(Comparator.comparingInt(b -> b.index));
         return a.toArray(new Gift2[0]);
     }
 
@@ -85,6 +88,7 @@ public class Lottery2 {
             long[] item_ids = lottery.getJSONArray("item_ids").stream().mapToLong((t) -> {
                 return (Long) t;
             }).toArray();
+            String n = lottery.getStr("name", lottery_id);
             BigDecimal fee = new BigDecimal(lottery.getStr("fee"));
             HashMap<BigDecimal, Gift2> a = new HashMap<>();
             BigDecimal b = new BigDecimal(0);
@@ -118,7 +122,7 @@ public class Lottery2 {
 
             return new Lottery2(
                     lottery_id,
-                    fee, groups,
+                    n, fee, groups,
                     item_ids,
                     (Map.Entry<BigDecimal, Gift2>[]) a.entrySet().stream().sorted((e1, e2) -> e1.getKey().subtract(e2.getKey()).compareTo(BigDecimal.ZERO) > 0 ? 1 : -1).toArray(),
                     document);

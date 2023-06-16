@@ -96,6 +96,38 @@ public class listener extends SimpleListenerHost {
                         a += i + "." + lotteries.get(i).lottery_id + "\n";
                     }
                     sender.sendMessage(a);
+                } else if (args.length == 3 && args[1].equals("绑定")) {
+                    try {
+                        Long buyerId = Long.valueOf(args[2]);
+                        ConfigConfig.INSTANCE.bindBuyerId("" + sender.getId(), buyerId);
+                        sender.sendMessage("绑定微店id: " + buyerId);
+                    } catch (Exception e) {
+                        sender.sendMessage("请输入正确的微店id");
+                    }
+                } else if (args.length == 2 && args[1].equals("解绑")) {
+                    if (ConfigConfig.INSTANCE.unbindBuyerId("" + sender.getId())) {
+                        sender.sendMessage("解绑成功");
+                    } else {
+                        sender.sendMessage("您没有绑定过微店id");
+                    }
+                } else if (args.length == 2 && args[1].equals("查卡")) {
+                    long buyerId = ConfigConfig.INSTANCE.getBindingBuyerId("" + sender.getId());
+                    if (buyerId != 0L) {
+                        //当前抽卡
+                        String current = "在当前正在进行的抽卡中：";
+                        for (Lottery2 lottery : ConfigConfig.INSTANCE.getAllNonNullLotterys()) {
+                            current += "\n【" + lottery.name + "】";
+                            for (Gift2 gift : lottery.getOwnedGifts(buyerId)) {
+                                current += "\n" + gift.getTitle();
+                            }
+                        }
+
+                        //历史抽卡记录暂不支持查看
+                        sender.sendMessage(current);
+
+                    } else {
+                        sender.sendMessage("您没有绑定过微店id，请使用“/抽卡 绑定 <微店ID>”绑定");
+                    }
                 } else {
                     sender.sendMessage(getHelp(1));
                 }
@@ -148,10 +180,13 @@ public class listener extends SimpleListenerHost {
         if (code == 1) {
             return "【微店抽卡相关】\n"
                     + "/抽卡 抽 <抽卡ID> <金额> (管理员模拟抽卡命令，奖品数据计入模拟账户)\n"
-                    + "(私信)/抽卡 新建 <json>\n"
-                    + "(私信)/抽卡 修改 <抽卡ID> <json>\n"
-                    + "(私信)/抽卡 删除 <抽卡ID>\n"
-                    + "(私信)/抽卡 列表\n";
+                    + "(私信 管理员)/抽卡 新建 <json>\n"
+                    + "(私信 管理员)/抽卡 修改 <抽卡ID> <json>\n"
+                    + "(私信 管理员)/抽卡 删除 <抽卡ID>\n"
+                    + "(私信 管理员)/抽卡 列表\n"
+                    + "(私信)/抽卡 绑定 <个人ID>"
+                    + "(私信)/抽卡 解绑"
+                    + "(私信)/抽卡 查卡";
         }
         return "【微店PK相关】\n"
                 + "(私信)/pk 新建 <json>\n"

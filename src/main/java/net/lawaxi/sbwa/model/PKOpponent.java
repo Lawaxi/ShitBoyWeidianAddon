@@ -18,7 +18,8 @@ public class PKOpponent {
         long item_id = opponent.getLong("item_id");
         long fee = 0;
         //有cookie获取金额的方式
-        if (opponent.containsKey("cookie")) {
+        String cookie = opponent.getStr("cookie", "");
+        if (!cookie.equals("")) {
             fee = WeidianHandler.INSTANCE.getTotalFee(WeidianCookie.construct(
                     opponent.getStr("cookie")
             ), item_id);
