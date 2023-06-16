@@ -21,13 +21,13 @@ import java.util.Map;
 public class ConfigConfig extends SimpleSettingConfig {
     public static ConfigConfig INSTANCE;
     //抽卡数据总表
-    public ArrayList<ConfigLotteryDocument> lotteryDocuments = new ArrayList<>();
+    public ArrayList<ConfigLotteryDocument> lotteryDocuments;
     //pk数据总表
-    public HashMap<String, JSONObject> pk = new HashMap<>();
+    public HashMap<String, JSONObject> pk;
 
     //-----------------//
     public JSONObject binding;
-    public HashMap<String, Long> buyerIdBinded = new HashMap<>();
+    public HashMap<String, Long> buyerIdBinded;
 
     public ConfigConfig(File file) {
         super(file);
@@ -43,12 +43,10 @@ public class ConfigConfig extends SimpleSettingConfig {
     @Override
     public void init() {
         File documentFolder = Common.I.documentFolder;
-        if (!documentFolder.exists())
-            documentFolder.mkdir();
 
-        lotteryDocuments.clear();
-        buyerIdBinded.clear();
-        pk.clear();
+        lotteryDocuments = new ArrayList<>();
+        buyerIdBinded = new HashMap<>();
+        pk = new HashMap<>();
 
         //抽卡
         for (Object o : JSONUtil.parseArray(setting.getStr("documents", "lottery", "[]")).toArray()) {
@@ -84,10 +82,11 @@ public class ConfigConfig extends SimpleSettingConfig {
         if (l == null) {
             return "null";
         } else {
-            lotteryDocuments.add(new ConfigLotteryDocument(id, d, l));
+            ConfigLotteryDocument document = new ConfigLotteryDocument(id, d, l);
+            lotteryDocuments.add(document);
+            l.setDocument(document);
 
             FileUtil.writeString(json.toStringPretty(), d, Charset.defaultCharset());
-
             JSONArray a = JSONUtil.parseArray(setting.getStr("documents", "lottery", "[]"));
             a.add(id);
             setting.setByGroup("documents", "lottery", a.toString());
@@ -99,8 +98,11 @@ public class ConfigConfig extends SimpleSettingConfig {
 
     public void rmLottery(ConfigLotteryDocument document) {
         String id = document.id;
-        FileUtil.move(new File(Common.I.documentFolder, id + ".json"),
+        FileUtil.moveContent(new File(Common.I.documentFolder, id + ".json"),
                 new File(Common.I.historyFolder, id + ".json"), false);
+
+        if (!new File(Common.I.historyFolder, "id").exists())
+            new File(Common.I.historyFolder, "id").mkdir();
 
         FileUtil.move(new File(Common.I.picFolder, "id"),
                 new File(Common.I.historyFolder, "id"), true);
@@ -113,6 +115,15 @@ public class ConfigConfig extends SimpleSettingConfig {
         a.add(id);
         setting.setByGroup("documents", "lottery", a.toString());
         save();
+    }
+
+    public JSONObject getJsonByLotteryId(String id) {
+        File d = new File(Common.I.documentFolder, id + ".json");
+        try {
+            return JSONUtil.readJSONObject(d, Charset.defaultCharset());
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public Lottery2[] getLotterysByGroupIdAndItemId(long groupId, long item_id) {
@@ -151,9 +162,9 @@ public class ConfigConfig extends SimpleSettingConfig {
     }
 
     public String generateLotteryId() {
-        String a = RandomUtil.randomString(5);
+        String a = RandomUtil.randomString(5).toUpperCase();
         while (getLotteryById(a) != null) {
-            a = RandomUtil.randomString(5);
+            a = RandomUtil.randomString(5).toUpperCase();
         }
         return a;
     }
@@ -251,9 +262,9 @@ public class ConfigConfig extends SimpleSettingConfig {
     }
 
     public String generatePkId() {
-        String a = RandomUtil.randomString(5);
+        String a = RandomUtil.randomString(5).toUpperCase();
         while (pk.containsKey(a)) {
-            a = RandomUtil.randomString(5);
+            a = RandomUtil.randomString(5).toUpperCase();
         }
         return a;
     }
@@ -295,13 +306,14 @@ public class ConfigConfig extends SimpleSettingConfig {
         return j.toArray(new JSONObject[0]);
     }
 
-    public Map.Entry<String, JSONObject>[] getAllValidPk() {
+    public List<Map.Entry<String, JSONObject>> getAllValidPk() {
         List<Map.Entry<String, JSONObject>> j = new ArrayList<>();
         for (Map.Entry<String, JSONObject> pk : pk.entrySet()) {
             if (isValidPK(pk.getValue()))
                 j.add(pk);
         }
-        return (Map.Entry<String, JSONObject>[]) j.toArray();
+
+        return j;
     }
 
 }

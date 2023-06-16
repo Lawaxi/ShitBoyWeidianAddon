@@ -2,8 +2,12 @@ package net.lawaxi.sbwa;
 
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import net.lawaxi.Shitboy;
+import net.lawaxi.model.WeidianCookie;
+import net.lawaxi.model.WeidianItem;
 import net.lawaxi.sbwa.config.ConfigConfig;
 import net.lawaxi.sbwa.handler.NewWeidianSenderHandler;
+import net.lawaxi.sbwa.handler.WeidianHandler;
 import net.lawaxi.sbwa.model.Gift2;
 import net.lawaxi.sbwa.model.Lottery2;
 import net.lawaxi.util.CommandOperator;
@@ -16,6 +20,8 @@ import net.mamoe.mirai.event.SimpleListenerHost;
 import net.mamoe.mirai.event.events.GroupMessageEvent;
 import net.mamoe.mirai.event.events.UserMessageEvent;
 import net.mamoe.mirai.message.data.At;
+import net.mamoe.mirai.message.data.Message;
+import net.mamoe.mirai.message.data.PlainText;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,8 +49,8 @@ public class listener extends SimpleListenerHost {
                         Lottery2[] lotteries = ConfigConfig.INSTANCE.getLotteryByGroupId(group.getId());
                         for (Lottery2 lottery : lotteries) {
                             if (lottery.lottery_id.equals(id)) {
-                                Gift2[] a = lottery.draw(pay, 1L);
-                                if (a.length > 0) {
+                                List<Gift2> a = lottery.draw(pay, 1L);
+                                if (a.size() > 0) {
                                     group.sendMessage(new At(event.getSender().getId())
                                             .plus(NewWeidianSenderHandler.getOutput(a, group)));
                                 }
@@ -57,7 +63,28 @@ public class listener extends SimpleListenerHost {
                     group.sendMessage(new At(event.getSender().getId()).plus("权限不足喵~"));
                 }
             }
+        } else if (message.equalsIgnoreCase("pk")) {
+            JSONObject[] pks = ConfigConfig.INSTANCE.getPkByGroupId(group.getId());
+            for (JSONObject pk : pks) {
+                Message a = new PlainText("【PK】" + pk.getStr("name") + "\n");
+
+                long itemid = pk.getLong("item_id");
+                WeidianCookie cookie = Shitboy.INSTANCE.getProperties().weidian_cookie.get(group.getId());
+                WeidianItem item = WeidianHandler.INSTANCE.searchItem(cookie, itemid);
+                if (item != null) {
+                    a = a.plus(NewWeidianSenderHandler.INSTANCE.executeItemMessages(
+                            item,
+                            group,
+                            10
+                    ));
+                } else {
+                    a = a.plus("获取失败");
+                }
+
+                group.sendMessage(a);
+            }
         }
+
         return ListeningStatus.LISTENING;
     }
 
@@ -68,20 +95,35 @@ public class listener extends SimpleListenerHost {
         User sender = event.getSender();
 
         if (message.startsWith("/")) {
-            String[] args = message.split(" ");
+            String[] args = splitPrivateCommand(message); //分三份
             if (args[0].equals("/抽卡")) {
 
-                if (args.length == 3 && args[1].equals("新建")) {
+                if (args[1].equals("新建")) {
                     sender.sendMessage(newDocument(args[2], sender.getId(), event.getBot()));
-                } else if (args.length == 4 && args[1].equals("修改")) {
+                } else if (args[1].equals("修改") && args[2].contains(" ")) {
+                    String arg2 = args[2].substring(0, args[2].indexOf(" "));
+                    String arg3 = args[2].substring(args[2].indexOf(" ") + 1);
+
+                    List<Lottery2> lotteries = getLotteryAdministrating(sender.getId(), event.getBot(), arg2);
+                    if (lotteries.size() == 0) {
+                        sender.sendMessage("无对应此id的抽卡或您不可以管理");
+                    } else {
+                        sender.sendMessage(editDocument(lotteries.get(0), arg3, sender.getId(), event.getBot()));
+                    }
+
+                } else if (args[1].equals("获取")) {
                     List<Lottery2> lotteries = getLotteryAdministrating(sender.getId(), event.getBot(), args[2]);
                     if (lotteries.size() == 0) {
                         sender.sendMessage("无对应此id的抽卡或您不可以管理");
                     } else {
-                        sender.sendMessage(editDocument(lotteries.get(0), args[3], sender.getId(), event.getBot()));
+                        JSONObject object = ConfigConfig.INSTANCE.getJsonByLotteryId(lotteries.get(0).lottery_id);
+                        if (object == null) {
+                            sender.sendMessage("查询错误");
+                        } else {
+                            sender.sendMessage(object.toString());
+                        }
                     }
-
-                } else if (args.length == 3 && args[1].equals("删除")) {
+                } else if (args[1].equals("删除")) {
                     List<Lottery2> lotteries = getLotteryAdministrating(sender.getId(), event.getBot(), args[2]);
                     if (lotteries.size() == 0) {
                         sender.sendMessage("无对应此id的抽卡或您不可以管理");
@@ -89,14 +131,14 @@ public class listener extends SimpleListenerHost {
                         ConfigConfig.INSTANCE.rmLottery(lotteries.get(0).document);
                         sender.sendMessage("删除成功");
                     }
-                } else if (args.length == 2 && args[1].equals("列表")) {
+                } else if (args[1].equals("全部")) {
                     List<Lottery2> lotteries = getLotteryAdministrating(sender.getId(), event.getBot(), null);
                     String a = "您可以管理的抽卡共" + lotteries.size() + "个：\n";
                     for (int i = 0; i < lotteries.size(); i++) {
-                        a += i + "." + lotteries.get(i).lottery_id + "\n";
+                        a += (i + 1) + ".(" + lotteries.get(i).lottery_id + ")" + lotteries.get(i).name + "\n";
                     }
                     sender.sendMessage(a);
-                } else if (args.length == 3 && args[1].equals("绑定")) {
+                } else if (args[1].equals("绑定")) {
                     try {
                         Long buyerId = Long.valueOf(args[2]);
                         ConfigConfig.INSTANCE.bindBuyerId("" + sender.getId(), buyerId);
@@ -104,13 +146,13 @@ public class listener extends SimpleListenerHost {
                     } catch (Exception e) {
                         sender.sendMessage("请输入正确的微店id");
                     }
-                } else if (args.length == 2 && args[1].equals("解绑")) {
+                } else if (args[1].equals("解绑")) {
                     if (ConfigConfig.INSTANCE.unbindBuyerId("" + sender.getId())) {
                         sender.sendMessage("解绑成功");
                     } else {
                         sender.sendMessage("您没有绑定过微店id");
                     }
-                } else if (args.length == 2 && args[1].equals("查卡")) {
+                } else if (args[1].equals("查卡")) {
                     long buyerId = ConfigConfig.INSTANCE.getBindingBuyerId("" + sender.getId());
                     if (buyerId != 0L) {
                         //当前抽卡
@@ -135,16 +177,18 @@ public class listener extends SimpleListenerHost {
 
             } else if (args[0].equals("/pk")) {
 
-                if (args.length == 3 && args[1].equals("新建")) {
+                if (args[1].equals("新建")) {
                     sender.sendMessage(newPK(args[2], sender.getId(), event.getBot()));
-                }
-                if (args.length == 4 && args[1].equals("修改")) {
-                    List<Map.Entry<String, JSONObject>> pks = getPkAdministrating(sender.getId(), event.getBot(), args[2]);
+                } else if (args[1].equals("修改") && args[2].contains(" ")) {
+                    String arg2 = args[2].substring(0, args[2].indexOf(" "));
+                    String arg3 = args[2].substring(args[2].indexOf(" ") + 1);
+
+                    List<Map.Entry<String, JSONObject>> pks = getPkAdministrating(sender.getId(), event.getBot(), arg2);
                     if (pks.size() == 0) {
                         sender.sendMessage("无对应此id的PK或您不可以管理");
                     } else {
                         try {
-                            if (ConfigConfig.INSTANCE.editPkByJson(pks.get(0).getKey(), JSONUtil.parseObj(args[3]))) {
+                            if (ConfigConfig.INSTANCE.editPkByJson(pks.get(0).getKey(), JSONUtil.parseObj(arg3))) {
                                 sender.sendMessage("修改成功");
                             } else {
                                 sender.sendMessage("json格式错误或无法获取对手金额");
@@ -153,7 +197,14 @@ public class listener extends SimpleListenerHost {
                             sender.sendMessage("请输入json");
                         }
                     }
-                } else if (args.length == 3 && args[1].equals("删除")) {
+                } else if (args[1].equals("获取")) {
+                    List<Map.Entry<String, JSONObject>> pks = getPkAdministrating(sender.getId(), event.getBot(), args[2]);
+                    if (pks.size() == 0) {
+                        sender.sendMessage("无对应此id的PK或您不可以管理");
+                    } else {
+                        sender.sendMessage(pks.get(0).getValue().toString());
+                    }
+                } else if (args[1].equals("删除")) {
                     List<Map.Entry<String, JSONObject>> pks = getPkAdministrating(sender.getId(), event.getBot(), args[2]);
                     if (pks.size() == 0) {
                         sender.sendMessage("无对应此id的PK或您不可以管理");
@@ -161,11 +212,11 @@ public class listener extends SimpleListenerHost {
                         ConfigConfig.INSTANCE.rmPk(pks.get(0).getKey());
                         sender.sendMessage("删除成功");
                     }
-                } else if (args.length == 2 && args[1].equals("列表")) {
+                } else if (args[1].equals("全部")) {
                     List<Map.Entry<String, JSONObject>> pks = getPkAdministrating(sender.getId(), event.getBot(), null);
                     String a = "您可以管理的PK共" + pks.size() + "个：\n";
                     for (int i = 0; i < pks.size(); i++) {
-                        a += i + ".(" + pks.get(i).getKey() + ")" + pks.get(i).getValue().getStr("name") + "\n";
+                        a += (i + 1) + ".(" + pks.get(i).getKey() + ")" + pks.get(i).getValue().getStr("name") + "\n";
                     }
                     sender.sendMessage(a);
                 } else {
@@ -182,8 +233,9 @@ public class listener extends SimpleListenerHost {
                     + "/抽卡 抽 <抽卡ID> <金额> (管理员模拟抽卡命令，奖品数据计入模拟账户)\n"
                     + "(私信 管理员)/抽卡 新建 <json>\n"
                     + "(私信 管理员)/抽卡 修改 <抽卡ID> <json>\n"
+                    + "(私信 管理员)/抽卡 获取 <抽卡ID>\n"
                     + "(私信 管理员)/抽卡 删除 <抽卡ID>\n"
-                    + "(私信 管理员)/抽卡 列表\n"
+                    + "(私信 管理员)/抽卡 全部\n"
                     + "(私信)/抽卡 绑定 <个人ID>"
                     + "(私信)/抽卡 解绑"
                     + "(私信)/抽卡 查卡";
@@ -191,8 +243,9 @@ public class listener extends SimpleListenerHost {
         return "【微店PK相关】\n"
                 + "(私信)/pk 新建 <json>\n"
                 + "(私信)/pk 修改 <pkID> <json>\n"
+                + "(私信)/pk 获取 <pkID>\n"
                 + "(私信)/pk 删除 <pkID>\n"
-                + "(私信)/pk 列表\n";
+                + "(私信)/pk 全部\n";
     }
 
     public String newDocument(String arg2, long qqId, Bot bot) {
@@ -207,7 +260,7 @@ public class listener extends SimpleListenerHost {
                 return "创建成功，id: " + id;
             }
         } catch (Exception e) {
-
+            e.printStackTrace();
         }
         return "请按规定格式输入json";
     }
@@ -223,7 +276,7 @@ public class listener extends SimpleListenerHost {
                 return "修改成功";
             }
         } catch (Exception e) {
-
+            e.printStackTrace();
         }
         return "修改失败，请按规定格式输入json";
     }
@@ -268,7 +321,7 @@ public class listener extends SimpleListenerHost {
 
             }
         } catch (Exception e) {
-
+            e.printStackTrace();
         }
         return "请按规定格式输入json";
     }
@@ -284,12 +337,28 @@ public class listener extends SimpleListenerHost {
     }
 
     public long administratingValidJson(JSONObject json, long qqId, Bot bot) {
-        for (Long g : (Long[]) json.getJSONArray("groups").stream().toArray()) {
+        for (Long g : json.getBeanList("groups", Long.class)) {
             if (!ShitBoyWeidianAddon.INSTANCE_SHITBOY.getConfig().isAdmin(bot.getGroup(g), qqId)) {
                 return g.longValue();
             }
         }
-        return 0;
+        return 0L;
     }
 
+    private String[] splitPrivateCommand(String command) {
+        if (command.contains(" ")) {
+            String[] out = new String[3];
+            out[0] = command.substring(0, command.indexOf(" "));
+            command = command.substring(command.indexOf(" ") + 1);
+            if (command.contains(" ")) { //三份
+                out[1] = command.substring(0, command.indexOf(" "));
+                out[2] = command.substring(command.indexOf(" ") + 1);
+                return out;
+            } else { //两份
+                out[1] = command;
+                return out;
+            }
+        }
+        return null;
+    }
 }

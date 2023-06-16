@@ -17,6 +17,18 @@ public class Common {
         this.picFolder = this.dataFolder;
         this.historyFolder = new File(parentFolder, "histories");
         I = this;
+
+        if (!documentFolder.exists())
+            documentFolder.mkdir();
+
+        if (!dataFolder.exists())
+            dataFolder.mkdir();
+
+        if (!picFolder.exists())
+            picFolder.mkdir();
+
+        if (!historyFolder.exists())
+            historyFolder.mkdir();
     }
 
 }

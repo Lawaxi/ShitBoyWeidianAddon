@@ -16,20 +16,24 @@ public class WeidianHandler extends net.lawaxi.handler.WeidianHandler {
     }
 
     public long getTotalStock(long id) {
-        String s = get(String.format(APIStock, id));
-        JSONObject o = JSONUtil.parseObj(s);
-        if (o != null) {
-            if (o.getJSONObject("status").getInt("code") == 0) {
-                JSONObject r = o.getJSONObject("result");
-                long total = 0;
-                for (Object o1 : r.getJSONArray("skuInfos")) {
-                    JSONObject sku = JSONUtil.parseObj(o1).getJSONObject("skuInfo");
-                    int price = sku.getInt("originalPrice");//分为单位
-                    int stock = sku.getInt("stock");
-                    total += (long) price * stock;
+        try {
+            String s = get(String.format(APIStock, id));
+            JSONObject o = JSONUtil.parseObj(s);
+            if (o != null) {
+                if (o.getJSONObject("status").getInt("code") == 0) {
+                    JSONObject r = o.getJSONObject("result");
+                    long total = 0;
+                    for (Object o1 : r.getJSONArray("skuInfos")) {
+                        JSONObject sku = JSONUtil.parseObj(o1).getJSONObject("skuInfo");
+                        int price = sku.getInt("originalPrice");//分为单位
+                        int stock = sku.getInt("stock");
+                        total += (long) price * stock;
+                    }
+                    return total;
                 }
-                return total;
             }
+        } catch (Exception e) {
+
         }
         return 0L;
     }

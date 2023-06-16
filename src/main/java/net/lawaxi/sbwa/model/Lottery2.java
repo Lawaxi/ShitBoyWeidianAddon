@@ -15,10 +15,10 @@ public class Lottery2 {
     public final BigDecimal fee;
     public final long[] groupIds;
     public final long[] item_ids;
-    public final Map.Entry<BigDecimal, Gift2>[] map;
+    public final List<Map.Entry<Integer, Gift2>> map;
     public ConfigLotteryDocument document;
 
-    public Lottery2(String lotteryId, String name, BigDecimal fee, long[] groupIds, long[] itemIds, Map.Entry<BigDecimal, Gift2>[] map, ConfigLotteryDocument document) {
+    public Lottery2(String lotteryId, String name, BigDecimal fee, long[] groupIds, long[] itemIds, List<Map.Entry<Integer, Gift2>> map, ConfigLotteryDocument document) {
         this.lottery_id = lotteryId;
         this.name = name;
         this.fee = fee;
@@ -28,14 +28,14 @@ public class Lottery2 {
         this.document = document;
     }
 
-    public Gift2[] draw(double pay, long buyerId) {
+    public List<Gift2> draw(double pay, long buyerId) {
         int time = new BigDecimal(pay).divide(fee).intValue();//向下取整
         List<Gift2> a = new ArrayList<>();
         for (int i = 0; i < time; i++) {
             a.add(draw(buyerId));
         }
         a.sort(Comparator.comparingInt(b -> b.index));//由小到大排序
-        return (Gift2[]) a.toArray();
+        return a;
     }
 
     public Gift2 draw(long buyerId) {
@@ -60,20 +60,20 @@ public class Lottery2 {
     }
 
     public Gift2 getRandomGift() {
-        double a = RandomUtil.randomDouble(0, getMaxNum());//不包含尾
-        for (Map.Entry<BigDecimal, Gift2> g : map) {
-            if (g.getKey().doubleValue() > a)
+        int a = RandomUtil.randomInt(0, getMaxNum());//不包含尾
+        for (Map.Entry<Integer, Gift2> g : map) {
+            if (g.getKey().intValue() > a)
                 return g.getValue();
         }
         return null;//应该不会出现的情况
     }
 
-    public double getMaxNum() {
-        return map[map.length - 1].getKey().doubleValue();
+    public int getMaxNum() {
+        return map.get(map.size() - 1).getKey().intValue();
     }
 
     public Gift2 getGiftById(String id) {
-        for (Map.Entry<BigDecimal, Gift2> g : map) {
+        for (Map.Entry<Integer, Gift2> g : map) {
             if (g.getValue().id.equals(id))
                 return g.getValue();
         }
@@ -82,22 +82,22 @@ public class Lottery2 {
 
     public static Lottery2 construct(String lottery_id, ConfigLotteryDocument document, JSONObject lottery) {
         try {
-            long[] groups = lottery.getJSONArray("groups").stream().mapToLong((t) -> {
-                return (Long) t;
+            long[] groups = lottery.getBeanList("groups", Long.class).stream().mapToLong((t) -> {
+                return t;
             }).toArray();
-            long[] item_ids = lottery.getJSONArray("item_ids").stream().mapToLong((t) -> {
-                return (Long) t;
+            long[] item_ids = lottery.getBeanList("item_ids", Long.class).stream().mapToLong((t) -> {
+                return t;
             }).toArray();
             String n = lottery.getStr("name", lottery_id);
             BigDecimal fee = new BigDecimal(lottery.getStr("fee"));
-            HashMap<BigDecimal, Gift2> a = new HashMap<>();
-            BigDecimal b = new BigDecimal(0);
+            HashMap<Integer, Gift2> a = new HashMap<>();
+            int b = 0;
 
             for (Object o : lottery.getJSONArray("qualities").stream().toArray()) {
                 //quality
                 JSONObject quality = JSONUtil.parseObj(o);
                 String q = quality.getStr("qlty");
-                BigDecimal probability = new BigDecimal(quality.getStr("pr"));
+                int probability = quality.getInt("pr");
                 int index = quality.getInt("index");
 
                 for (Object o2 : quality.getJSONArray("gifts").stream().toArray()) {
@@ -105,9 +105,9 @@ public class Lottery2 {
                     JSONObject gift = JSONUtil.parseObj(o2);
                     String id = gift.getStr("id");
                     String name = gift.getStr("name");
-                    String pic = gift.getStr("pic", name + ".jpg");
+                    String pic = gift.getStr("pic", id + ".jpg");
 
-                    b.add(probability);
+                    b += probability;
                     a.put(b, new Gift2(
                             lottery_id,
                             id,
@@ -120,13 +120,20 @@ public class Lottery2 {
 
             }
 
+            //注意Map.Entry不是Object，不可以用toArray()方法转化
+            List<Map.Entry<Integer, Gift2>> a1 = new ArrayList<>();
+            for (Map.Entry<Integer, Gift2> a0 : a.entrySet())
+                a1.add(a0);
+            a1.sort(Comparator.comparingInt(Map.Entry::getKey));
+
             return new Lottery2(
                     lottery_id,
                     n, fee, groups,
                     item_ids,
-                    (Map.Entry<BigDecimal, Gift2>[]) a.entrySet().stream().sorted((e1, e2) -> e1.getKey().subtract(e2.getKey()).compareTo(BigDecimal.ZERO) > 0 ? 1 : -1).toArray(),
+                    a1,
                     document);
         } catch (Exception e) {
+            e.printStackTrace();
             ShitBoyWeidianAddon.INSTANCE.getLogger().info("格式错误");
             return null;
         }

@@ -18,6 +18,7 @@ import net.mamoe.mirai.utils.MiraiLogger;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
 
 public class NewWeidianSenderHandler extends WeidianSenderHandler {
 
@@ -49,15 +50,15 @@ public class NewWeidianSenderHandler extends WeidianSenderHandler {
         Message m = super.executeOrderMessage(order, group);
         Lottery2[] lotteries = ConfigConfig.INSTANCE.getLotterysByGroupIdAndItemId(group.getId(), order.itemID);
         for (Lottery2 lottery : lotteries) {
-            Gift2[] a = lottery.draw(order.price, order.buyerID);
-            if (a.length > 0) {
+            List<Gift2> a = lottery.draw(order.price, order.buyerID);
+            if (a.size() > 0) {
                 m = m.plus("\n---------\n").plus(getOutput(a, group));
             }
         }
         return m;
     }
 
-    public static Message getOutput(Gift2[] a, Group group) {
+    public static Message getOutput(List<Gift2> a, Group group) {
         Message m = new PlainText("");
 
         try {
@@ -66,18 +67,18 @@ public class NewWeidianSenderHandler extends WeidianSenderHandler {
                 m = m.plus(group.uploadImage(ExternalResource.create(i)));
             }
         } catch (IOException e) {
-
+            e.printStackTrace();
         }
 
-        m = m.plus("\n抽卡收获：\n");
+        m = m.plus("\n抽卡" + a.size() + "张，收获：\n");
         for (Gift2 g : a) {
-            m.plus(g.getTitle() + "\n");
+            m = m.plus(g.getTitle() + "\n");
         }
         return m;
     }
 
     //寻找有图的gift
-    private static InputStream getFrontPic(Gift2[] gifts) {
+    private static InputStream getFrontPic(List<Gift2> gifts) {
         for (Gift2 g : gifts) {
             InputStream i = g.getPic();
             if (i != null)

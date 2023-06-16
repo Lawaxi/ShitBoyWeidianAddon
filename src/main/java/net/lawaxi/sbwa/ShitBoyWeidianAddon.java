@@ -9,6 +9,7 @@ import net.mamoe.mirai.console.plugin.Plugin;
 import net.mamoe.mirai.console.plugin.PluginManager;
 import net.mamoe.mirai.console.plugin.jvm.JavaPlugin;
 import net.mamoe.mirai.console.plugin.jvm.JvmPluginDescriptionBuilder;
+import net.mamoe.mirai.event.GlobalEventChannel;
 
 public final class ShitBoyWeidianAddon extends JavaPlugin {
     public static final ShitBoyWeidianAddon INSTANCE = new ShitBoyWeidianAddon();
@@ -17,7 +18,7 @@ public final class ShitBoyWeidianAddon extends JavaPlugin {
     public static WeidianHandler weidianHandler;
 
     private ShitBoyWeidianAddon() {
-        super(new JvmPluginDescriptionBuilder("net.lawaxi.shitboyWA", "0.1.0-beta3")
+        super(new JvmPluginDescriptionBuilder("net.lawaxi.shitboyWA", "0.1.0-test2")
                 .name("ShitBoyWeidianAddon")
                 .author("delay")
                 .dependsOn("net.lawaxi.shitboy", false)
@@ -29,6 +30,8 @@ public final class ShitBoyWeidianAddon extends JavaPlugin {
         if (loadShitboy()) {
             initConfig();
             INSTANCE_SHITBOY.handlerWeidianSender = new NewWeidianSenderHandler();
+
+            GlobalEventChannel.INSTANCE.registerListenerHost(new listener());
         }
     }
 

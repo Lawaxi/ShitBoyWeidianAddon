@@ -16,21 +16,26 @@ public class ConfigLotteryDocument extends SimpleJSONConfig {
         super(file);
         this.id = id;
         readDocument();
+        initData();
     }
 
     public ConfigLotteryDocument(String id, File file, Lottery2 lottery) {
         super(file);
         this.id = id;
         this.lottery = lottery;
+        initData();
     }
 
     @Override
     public JSONObject init() {
+        return null;
+    }
+
+    public void initData() {
         File dataFolder = new File(Common.I.dataFolder, id);
         if (!dataFolder.exists())
             dataFolder.mkdir();
         this.data = new ConfigLotteryData(new File(dataFolder, "data.json"));
-        return null;
     }
 
     public void readDocument() {
