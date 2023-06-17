@@ -22,14 +22,18 @@ public class WeidianHandler extends net.lawaxi.handler.WeidianHandler {
             if (o != null) {
                 if (o.getJSONObject("status").getInt("code") == 0) {
                     JSONObject r = o.getJSONObject("result");
-                    long total = 0;
-                    for (Object o1 : r.getJSONArray("skuInfos")) {
-                        JSONObject sku = JSONUtil.parseObj(o1).getJSONObject("skuInfo");
-                        int price = sku.getInt("originalPrice");//分为单位
-                        int stock = sku.getInt("stock");
-                        total += (long) price * stock;
+                    if (r.containsKey("skuInfos")) {
+                        long total = 0;
+                        for (Object o1 : r.getJSONArray("skuInfos")) {
+                            JSONObject sku = JSONUtil.parseObj(o1).getJSONObject("skuInfo");
+                            int price = sku.getInt("originalPrice");//分为单位
+                            int stock = sku.getInt("stock");
+                            total += (long) price * (long) stock;
+                        }
+                        return total;
+                    } else {
+                        return (long) r.getInt("itemDiscountHighPrice") * (long) r.getInt("itemStock");
                     }
-                    return total;
                 }
             }
         } catch (Exception e) {
