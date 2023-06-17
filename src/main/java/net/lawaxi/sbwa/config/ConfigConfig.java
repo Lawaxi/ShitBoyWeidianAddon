@@ -231,7 +231,7 @@ public class ConfigConfig extends SimpleSettingConfig {
                     }
                 }
 
-                if(success){
+                if (success) {
                     continue;
                 }
             }
@@ -266,6 +266,48 @@ public class ConfigConfig extends SimpleSettingConfig {
                     return true;
             }
         }
+        return false;
+    }
+
+    public JSONObject getPkOpponent(String id, String opponent_name){
+        try {
+            if (pk.containsKey(id)) {
+                JSONObject o = pk.get(id);
+                JSONArray a = o.getJSONArray("opponents");
+                for (Object op : a.toArray()) {
+                    JSONObject op1 = JSONUtil.parseObj(op);
+                    if (op1.getStr("name").equals(opponent_name)) {
+                        return op1;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public boolean editStock(String id, String opponent, long stock) {
+        try {
+            if (pk.containsKey(id)) {
+                JSONObject o = pk.get(id);
+                JSONArray a = o.getJSONArray("opponents");
+                JSONArray a2 = new JSONArray();
+                for (Object op : a.toArray()) {
+                    JSONObject op1 = JSONUtil.parseObj(op);
+                    if (op1.getStr("name").equals(opponent)) {
+                        op1.set("stock", stock);
+                    }
+                    a2.add(op1);
+                }
+                o.set("opponents", a2);
+                pk.put(id, o);
+                return true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
         return false;
     }
 

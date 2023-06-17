@@ -112,3 +112,4 @@ Mirai-Console插件，依赖[Lawaxi/Shitboy](https://github.com/Lawaxi/ShitBoy)�
 - test2 BUG修复：太开心了，mirai可以登录了
 - test4 BUG修复（单个sku）
 - test5 BUG修复（十倍金额）
+- test6 对手增减库存时用真实数据修正

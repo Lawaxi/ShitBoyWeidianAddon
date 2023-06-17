@@ -7,10 +7,12 @@ import net.lawaxi.sbwa.handler.WeidianHandler;
 public class PKOpponent {
     public final String name;
     public final long feeAmount;
+    public final boolean hasCookie;
 
-    public PKOpponent(String name, long feeAmount) {
+    public PKOpponent(String name, long feeAmount, boolean hasCookie) {
         this.name = name;
         this.feeAmount = feeAmount;
+        this.hasCookie = hasCookie;
     }
 
     public static PKOpponent construct(JSONObject opponent) {
@@ -25,7 +27,7 @@ public class PKOpponent {
                         opponent.getStr("cookie")
                 ), item_id);
             }
-            return new PKOpponent(name, fee);
+            return new PKOpponent(name, fee, true);
         }
 
 
@@ -35,9 +37,9 @@ public class PKOpponent {
             for(Long item_id : opponent.getBeanList("item_id", Long.class)){
                 f+=WeidianHandler.INSTANCE.getTotalStock(item_id);
             }
-            return new PKOpponent(name, opponent.getLong("stock") - f);
+            return new PKOpponent(name, opponent.getLong("stock") - f, false);
         }
 
-        return new PKOpponent(name, 1L);
+        return new PKOpponent(name, 1L, false);
     }
 }

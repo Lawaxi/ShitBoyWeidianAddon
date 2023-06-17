@@ -10,6 +10,7 @@ import net.lawaxi.sbwa.handler.NewWeidianSenderHandler;
 import net.lawaxi.sbwa.handler.WeidianHandler;
 import net.lawaxi.sbwa.model.Gift2;
 import net.lawaxi.sbwa.model.Lottery2;
+import net.lawaxi.sbwa.model.PKOpponent;
 import net.lawaxi.util.CommandOperator;
 import net.mamoe.mirai.Bot;
 import net.mamoe.mirai.contact.Group;
@@ -20,8 +21,6 @@ import net.mamoe.mirai.event.SimpleListenerHost;
 import net.mamoe.mirai.event.events.GroupMessageEvent;
 import net.mamoe.mirai.event.events.UserMessageEvent;
 import net.mamoe.mirai.message.data.At;
-import net.mamoe.mirai.message.data.Message;
-import net.mamoe.mirai.message.data.PlainText;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -209,6 +208,31 @@ public class listener extends SimpleListenerHost {
                         ConfigConfig.INSTANCE.rmPk(pks.get(0).getKey());
                         sender.sendMessage("删除成功");
                     }
+                } else if (args[1].equals("修正") && args[2].split(" ").length == 3) {
+                    String[] arg2 = args[2].split(" ");
+                    List<Map.Entry<String, JSONObject>> pks = getPkAdministrating(sender.getId(), event.getBot(), arg2[0]);
+                    if (pks.size() == 0) {
+                        sender.sendMessage("无对应此id的PK或您不可以管理");
+                    } else {
+                        String id = arg2[0];
+                        JSONObject opponent = ConfigConfig.INSTANCE.getPkOpponent(id, arg2[1]);
+                        if (opponent == null) {
+                            sender.sendMessage("未找到对手：" + arg2[1]);
+                        } else {
+                            PKOpponent o = PKOpponent.construct(opponent);
+                            if (o.hasCookie) {
+                                sender.sendMessage("此对手金额为cookie统计无法修正，如有错误请联系管理员");
+                            } else {
+                                long balance = Long.valueOf(arg2[2]).longValue();
+                                long stock_pre = opponent.getLong("stock");
+                                long balance_pre = o.feeAmount;
+                                long stock = balance - balance_pre  + stock_pre;
+                                ConfigConfig.INSTANCE.editStock(id, arg2[1], stock);
+                                sender.sendMessage("修正成功");
+                            }
+                        }
+                    }
+
                 } else if (args[1].equals("全部")) {
                     List<Map.Entry<String, JSONObject>> pks = getPkAdministrating(sender.getId(), event.getBot(), null);
                     String a = "您可以管理的PK共" + pks.size() + "个：\n";
@@ -242,6 +266,7 @@ public class listener extends SimpleListenerHost {
                 + "(私信)/pk 修改 <pkID> <json>\n"
                 + "(私信)/pk 获取 <pkID>\n"
                 + "(私信)/pk 删除 <pkID>\n"
+                + "(私信)/pk 修正 <pkID> <对手> <金额/分>\n"
                 + "(私信)/pk 全部\n";
     }
 
