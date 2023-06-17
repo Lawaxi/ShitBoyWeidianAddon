@@ -37,7 +37,7 @@ public class NewWeidianSenderHandler extends WeidianSenderHandler {
         for (JSONObject pk : pks) {
             String a = "\n---------\n【PK】" + pk.getStr("name");
             for (PKOpponent opponent : PKUtil.getOpponents(pk.getJSONArray("opponents"))) {
-                a += "\n" + opponent + ": " + opponent.feeAmount;
+                a += "\n" + opponent.name + ": " + (opponent.feeAmount / 10.0);
             }
 
             m = m.plus(a);

@@ -73,7 +73,7 @@ public class ConfigConfig extends SimpleSettingConfig {
 
     public String addLotteryByJSON(JSONObject json) {
         String id = json.getStr("id", "");
-        if (id.equals("") || getLotteryById(json.getStr("id")) != null) {
+        if (!(!id.equals("") && getLotteryById(id) == null)) {
             id = generateLotteryId();
         }
         File d = new File(Common.I.documentFolder, id + ".json");
@@ -206,7 +206,7 @@ public class ConfigConfig extends SimpleSettingConfig {
 
     public String addPkByJson(JSONObject json) {
         String id = json.getStr("id", "");
-        if (id.equals("") || pk.containsKey(json.getStr("id"))) {
+        if (!(!id.equals("") && !pk.containsKey(json.getStr("id")))) {
             id = generatePkId();
         }
 
@@ -217,17 +217,25 @@ public class ConfigConfig extends SimpleSettingConfig {
         for (Object o : json.getJSONArray("opponents").toArray()) {
             JSONObject opponent = JSONUtil.parseObj(o);
             if (opponent.containsKey("item_id")) {
-                if (!opponent.containsKey("cookie")) {
-                    long stock = WeidianHandler.INSTANCE.getTotalStock(
-                            opponent.getLong("item_id")
-                    );
+                boolean success = opponent.containsKey("cookie");
+                if (!success) {
+                    long stock = 0;
+                    for (Long item_id : opponent.getBeanList("item_id", Long.class)) {
+                        stock += WeidianHandler.INSTANCE.getTotalStock(item_id);
+                    }
+
                     if (stock != 0L) {
                         opponent.set("stock", stock);
                         opponents.add(opponent);
-                        continue;
+                        success = true;
                     }
                 }
+
+                if(success){
+                    continue;
+                }
             }
+
             return "failed";
         }
 
@@ -241,7 +249,7 @@ public class ConfigConfig extends SimpleSettingConfig {
     public boolean rmPk(String id) {
         if (pk.containsKey(id)) {
             pk.remove(id);
-            setting.remove(id, "pk");
+            setting.remove("pk", id);
             save();
             return true;
         } else

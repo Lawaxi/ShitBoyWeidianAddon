@@ -66,22 +66,19 @@ public class listener extends SimpleListenerHost {
         } else if (message.equalsIgnoreCase("pk")) {
             JSONObject[] pks = ConfigConfig.INSTANCE.getPkByGroupId(group.getId());
             for (JSONObject pk : pks) {
-                Message a = new PlainText("【PK】" + pk.getStr("name") + "\n");
 
                 long itemid = pk.getLong("item_id");
                 WeidianCookie cookie = Shitboy.INSTANCE.getProperties().weidian_cookie.get(group.getId());
                 WeidianItem item = WeidianHandler.INSTANCE.searchItem(cookie, itemid);
                 if (item != null) {
-                    a = a.plus(NewWeidianSenderHandler.INSTANCE.executeItemMessages(
+                    group.sendMessage(NewWeidianSenderHandler.INSTANCE.executeItemMessages(
                             item,
                             group,
                             10
                     ));
                 } else {
-                    a = a.plus("获取失败");
+                    group.sendMessage("获取失败");
                 }
-
-                group.sendMessage(a);
             }
         }
 
@@ -236,9 +233,9 @@ public class listener extends SimpleListenerHost {
                     + "(私信 管理员)/抽卡 获取 <抽卡ID>\n"
                     + "(私信 管理员)/抽卡 删除 <抽卡ID>\n"
                     + "(私信 管理员)/抽卡 全部\n"
-                    + "(私信)/抽卡 绑定 <个人ID>"
-                    + "(私信)/抽卡 解绑"
-                    + "(私信)/抽卡 查卡";
+                    + "(私信)/抽卡 绑定 <个人ID>\n"
+                    + "(私信)/抽卡 解绑\n"
+                    + "(私信)/抽卡 查卡\n";
         }
         return "【微店PK相关】\n"
                 + "(私信)/pk 新建 <json>\n"

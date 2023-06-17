@@ -65,7 +65,7 @@ Mirai-Console插件，依赖[Lawaxi/Shitboy](https://github.com/Lawaxi/ShitBoy)�
 ### PK json格式（通过“/抽卡 新建 <json>”提交）
 
 ~~~json5
-{"name":"","groups":[],"item_id":0,"opponents":[{"name":"","item_id":0,"cookie":""}]}
+{"name":"","groups":[],"item_id":0,"opponents":[{"name":"","item_id":[],"cookie":""}]}
 ~~~
 
 ~~~json5
@@ -82,7 +82,7 @@ Mirai-Console插件，依赖[Lawaxi/Shitboy](https://github.com/Lawaxi/ShitBoy)�
   [
     {
       "name": "",
-      "item_id": 0,
+      "item_id": [0],
       "cookie": ""
     }
   ]

@@ -15,21 +15,29 @@ public class PKOpponent {
 
     public static PKOpponent construct(JSONObject opponent) {
         String name = opponent.getStr("name");
-        long item_id = opponent.getLong("item_id");
-        long fee = 0;
+
         //有cookie获取金额的方式
         String cookie = opponent.getStr("cookie", "");
         if (!cookie.equals("")) {
-            fee = WeidianHandler.INSTANCE.getTotalFee(WeidianCookie.construct(
-                    opponent.getStr("cookie")
-            ), item_id);
+            long fee = 0;
+            for(Long item_id : opponent.getBeanList("item_id", Long.class)){
+                fee += WeidianHandler.INSTANCE.getTotalFee(WeidianCookie.construct(
+                        opponent.getStr("cookie")
+                ), item_id);
+            }
+            return new PKOpponent(name, fee);
         }
+
 
         //无cookie获取金额的方式（不准确）
         if (opponent.containsKey("stock")) {
-            fee = opponent.getLong("stock") - WeidianHandler.INSTANCE.getTotalStock(item_id);
+            long f = 0;
+            for(Long item_id : opponent.getBeanList("item_id", Long.class)){
+                f+=WeidianHandler.INSTANCE.getTotalStock(item_id);
+            }
+            return new PKOpponent(name, opponent.getLong("stock") - f);
         }
 
-        return new PKOpponent(name, fee);
+        return new PKOpponent(name, 1L);
     }
 }
