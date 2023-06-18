@@ -11,6 +11,7 @@ import net.lawaxi.sbwa.handler.WeidianHandler;
 import net.lawaxi.sbwa.model.Gift2;
 import net.lawaxi.sbwa.model.Lottery2;
 import net.lawaxi.sbwa.model.PKOpponent;
+import net.lawaxi.sbwa.util.PKUtil;
 import net.lawaxi.util.CommandOperator;
 import net.mamoe.mirai.Bot;
 import net.mamoe.mirai.contact.Group;
@@ -67,17 +68,68 @@ public class listener extends SimpleListenerHost {
             for (JSONObject pk : pks) {
 
                 long itemid = pk.getLong("item_id");
-                WeidianCookie cookie = Shitboy.INSTANCE.getProperties().weidian_cookie.get(group.getId());
-                WeidianItem item = WeidianHandler.INSTANCE.searchItem(cookie, itemid);
-                if (item != null) {
-                    group.sendMessage(NewWeidianSenderHandler.INSTANCE.executeItemMessages(
-                            item,
-                            group,
-                            10
-                    ));
-                } else {
-                    group.sendMessage("获取失败");
+                //已提交cookie的群
+                if (Shitboy.INSTANCE.getProperties().weidian_cookie.containsKey(group.getId())) {
+                    WeidianCookie cookie = Shitboy.INSTANCE.getProperties().weidian_cookie.get(group.getId());
+                    WeidianItem item = WeidianHandler.INSTANCE.searchItem(cookie, itemid);
+                    if (item != null) {
+                        group.sendMessage(NewWeidianSenderHandler.INSTANCE.executeItemMessages(
+                                item,
+                                group,
+                                10
+                        ));
+                    } else {
+                        group.sendMessage("获取失败");
+                    }
                 }
+                //代理未提交cookie群的pk播报
+                else {
+                    if (pk.getLong("stock", 0L) != 0L) {
+
+                        String a = "【PK】" + pk.getStr("name")
+                                + "\n进度: " + (PKUtil.meAsOpponent(pk).feeAmount / 100.0)
+                                + "\n---------";
+                        for (PKOpponent opponent : PKUtil.getOpponents(pk.getJSONArray("opponents"))) {
+                            a += "\n" + opponent.name + ": " + (opponent.feeAmount / 100.0);
+                        }
+
+                        group.sendMessage(a);
+                    } else {
+                        group.sendMessage("获取失败");
+                    }
+                }
+            }
+        } else if (message.startsWith("绑定")) {
+            try {
+                Long buyerId = Long.valueOf(message.substring(message.indexOf(" ") + 1));
+                ConfigConfig.INSTANCE.bindBuyerId("" + event.getSender().getId(), buyerId);
+                group.sendMessage(new At(event.getSender().getId()).plus("绑定微店id: " + buyerId));
+            } catch (Exception e) {
+                group.sendMessage(new At(event.getSender().getId()).plus("请输入正确的微店id"));
+            }
+        } else if (message.equals("查卡")) {
+            long buyerId = ConfigConfig.INSTANCE.getBindingBuyerId("" + event.getSender().getId());
+            if (buyerId != 0L) {
+                //当前抽卡
+                String current = "";
+                Lottery2[] lotteries = ConfigConfig.INSTANCE.getLotteryByGroupId(group.getId());
+                if (lotteries.length > 0) {
+                    for (int i = 0; i < lotteries.length; i++) {
+                        if (i != 0) {
+                            current += "\n+++++++++\n";
+                        }
+                        current += "【" + lotteries[i].name + "】";
+                        for (Gift2 gift : lotteries[i].getOwnedGifts(buyerId)) {
+                            current += "\n" + gift.getTitle();
+                        }
+                    }
+
+                    //历史抽卡记录暂不支持查看
+                    group.sendMessage(new At(event.getSender().getId()).plus(current));
+                }
+
+            } else {
+                group.sendMessage(new At(event.getSender().getId()).plus("请先输入“绑定 <微店ID>”绑定"));
             }
         }
 
@@ -215,20 +267,33 @@ public class listener extends SimpleListenerHost {
                         sender.sendMessage("无对应此id的PK或您不可以管理");
                     } else {
                         String id = arg2[0];
-                        JSONObject opponent = ConfigConfig.INSTANCE.getPkOpponent(id, arg2[1]);
-                        if (opponent == null) {
-                            sender.sendMessage("未找到对手：" + arg2[1]);
-                        } else {
-                            PKOpponent o = PKOpponent.construct(opponent);
-                            if (o.hasCookie) {
-                                sender.sendMessage("此对手金额为cookie统计无法修正，如有错误请联系管理员");
+                        if (arg2[1].equals("我")) {
+                            if (PKUtil.doGroupsHaveCookie(pks.get(0).getValue())) {
+                                sender.sendMessage("自己金额为cookie统计无法修正，如有错误请联系管理员");
                             } else {
                                 long balance = Long.valueOf(arg2[2]).longValue();
-                                long stock_pre = opponent.getLong("stock");
-                                long balance_pre = o.feeAmount;
-                                long stock = balance - balance_pre  + stock_pre;
-                                ConfigConfig.INSTANCE.editStock(id, arg2[1], stock);
+                                long stock_pre = pks.get(0).getValue().getLong("stock");
+                                long balance_pre = PKUtil.meAsOpponent(pks.get(0).getValue()).feeAmount;
+                                long stock = balance - balance_pre + stock_pre;
+                                ConfigConfig.INSTANCE.editStock(id, stock);
                                 sender.sendMessage("修正成功");
+                            }
+                        } else {
+                            JSONObject opponent = ConfigConfig.INSTANCE.getPkOpponent(id, arg2[1]);
+                            if (opponent == null) {
+                                sender.sendMessage("未找到对手：" + arg2[1]);
+                            } else {
+                                PKOpponent o = PKOpponent.construct(opponent);
+                                if (o.hasCookie) {
+                                    sender.sendMessage("此对手金额为cookie统计无法修正，如有错误请联系管理员");
+                                } else {
+                                    long balance = Long.valueOf(arg2[2]).longValue();
+                                    long stock_pre = opponent.getLong("stock");
+                                    long balance_pre = o.feeAmount;
+                                    long stock = balance - balance_pre + stock_pre;
+                                    ConfigConfig.INSTANCE.editStock(id, arg2[1], stock);
+                                    sender.sendMessage("修正成功");
+                                }
                             }
                         }
                     }
@@ -251,22 +316,26 @@ public class listener extends SimpleListenerHost {
     public String getHelp(int code) {
         if (code == 1) {
             return "【微店抽卡相关】\n"
+                    + "绑定 <微店ID>\n"
+                    + "查卡"
                     + "/抽卡 抽 <抽卡ID> <金额> (管理员模拟抽卡命令，奖品数据计入模拟账户)\n"
                     + "(私信 管理员)/抽卡 新建 <json>\n"
                     + "(私信 管理员)/抽卡 修改 <抽卡ID> <json>\n"
                     + "(私信 管理员)/抽卡 获取 <抽卡ID>\n"
                     + "(私信 管理员)/抽卡 删除 <抽卡ID>\n"
                     + "(私信 管理员)/抽卡 全部\n"
-                    + "(私信)/抽卡 绑定 <个人ID>\n"
+                    + "(私信)/抽卡 绑定 <微店ID>\n"
                     + "(私信)/抽卡 解绑\n"
                     + "(私信)/抽卡 查卡\n";
         }
         return "【微店PK相关】\n"
+                + "pk\n"
                 + "(私信)/pk 新建 <json>\n"
                 + "(私信)/pk 修改 <pkID> <json>\n"
                 + "(私信)/pk 获取 <pkID>\n"
                 + "(私信)/pk 删除 <pkID>\n"
                 + "(私信)/pk 修正 <pkID> <对手> <金额/分>\n"
+                + "(私信)/pk 修正 <pkID> 我 <金额/分>\n"
                 + "(私信)/pk 全部\n";
     }
 

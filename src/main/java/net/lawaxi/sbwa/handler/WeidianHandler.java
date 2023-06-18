@@ -45,7 +45,7 @@ public class WeidianHandler extends net.lawaxi.handler.WeidianHandler {
     public long getTotalFee(WeidianCookie cookie, long id) {
         long total = 0;
         for (WeidianBuyer buyer : getItemBuyer(cookie, id)) {
-            total += (int) (buyer.contribution * 100);
+            total += buyer.contribution;
         }
         return total;
     }

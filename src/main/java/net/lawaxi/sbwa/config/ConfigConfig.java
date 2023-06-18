@@ -10,6 +10,7 @@ import cn.hutool.setting.Setting;
 import net.lawaxi.sbwa.handler.WeidianHandler;
 import net.lawaxi.sbwa.model.Lottery2;
 import net.lawaxi.sbwa.util.Common;
+import net.lawaxi.sbwa.util.PKUtil;
 
 import java.io.File;
 import java.nio.charset.Charset;
@@ -213,6 +214,17 @@ public class ConfigConfig extends SimpleSettingConfig {
         if (!isValidPK(json))
             return "null";
 
+        if (!PKUtil.doGroupsHaveCookie(json)) {
+            long stock = 0;
+            for (Long item_id : json.getBeanList("item_ids", Long.class)) {
+                stock += WeidianHandler.INSTANCE.getTotalStock(item_id);
+            }
+
+            if (stock != 0L) {
+                json.set("stock", stock);
+            }
+        }
+
         JSONArray opponents = new JSONArray();
         for (Object o : json.getJSONArray("opponents").toArray()) {
             JSONObject opponent = JSONUtil.parseObj(o);
@@ -269,7 +281,7 @@ public class ConfigConfig extends SimpleSettingConfig {
         return false;
     }
 
-    public JSONObject getPkOpponent(String id, String opponent_name){
+    public JSONObject getPkOpponent(String id, String opponent_name) {
         try {
             if (pk.containsKey(id)) {
                 JSONObject o = pk.get(id);
@@ -287,6 +299,23 @@ public class ConfigConfig extends SimpleSettingConfig {
         return null;
     }
 
+    public boolean editStock(String id, long stock) {
+        try {
+            if (pk.containsKey(id)) {
+                JSONObject o = pk.get(id);
+                o.set("stock", stock);
+                pk.put(id, o);
+                setting.setByGroup(id, "pk", o.toString());
+                save();
+                return true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+
     public boolean editStock(String id, String opponent, long stock) {
         try {
             if (pk.containsKey(id)) {
@@ -302,6 +331,8 @@ public class ConfigConfig extends SimpleSettingConfig {
                 }
                 o.set("opponents", a2);
                 pk.put(id, o);
+                setting.setByGroup(id, "pk", o.toString());
+                save();
                 return true;
             }
         } catch (Exception e) {
