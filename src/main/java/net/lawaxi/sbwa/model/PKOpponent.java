@@ -27,6 +27,7 @@ public class PKOpponent {
 
     public static PKOpponent construct(JSONObject opponent) {
         String name = opponent.getStr("name", "");
+        PKOpponent out = null;
 
         //有cookie获取金额的方式
         String cookie = opponent.getStr("cookie", "");
@@ -37,20 +38,22 @@ public class PKOpponent {
                         opponent.getStr("cookie")
                 ), item_id);
             }
-            return new PKOpponent(name, fee, true);
+            out = new PKOpponent(name, fee, true);
         }
 
 
         //无cookie获取金额的方式（不准确）
-        if (opponent.containsKey("stock")) {
+        else if (opponent.containsKey("stock")) {
             long f = 0;
             for (Long item_id : opponent.getBeanList("item_id", Long.class)) {
                 f += WeidianHandler.INSTANCE.getTotalStock(item_id);
             }
-            return new PKOpponent(name, opponent.getLong("stock") - f, false);
+            out = new PKOpponent(name, opponent.getLong("stock") - f, false);
         }
 
-        PKOpponent out = new PKOpponent(name, 1L, false);
+        else {
+            out = new PKOpponent(name, 1L, false);
+        }
         return opponent.containsKey("pk_group") ? out.setGroup(opponent.getStr("pk_group")) : out;
     }
 }

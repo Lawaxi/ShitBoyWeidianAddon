@@ -18,7 +18,7 @@ public final class ShitBoyWeidianAddon extends JavaPlugin {
     public static WeidianHandler weidianHandler;
 
     private ShitBoyWeidianAddon() {
-        super(new JvmPluginDescriptionBuilder("net.lawaxi.shitboyWA", "0.1.1")
+        super(new JvmPluginDescriptionBuilder("net.lawaxi.shitboyWA", "0.1.1-test2")
                 .name("ShitBoyWeidianAddon")
                 .author("delay")
                 .dependsOn("net.lawaxi.shitboy", false)

@@ -50,9 +50,9 @@ public class PKGroup {
 
     public String getMessage() {
         if (this.coefficientEquals1) {
-            return "\n【" + title + "】 总额: " + total + message;
+            return "\n【" + title + "】 总额: " + (total / 100.0) + message;
         } else {
-            return "\n【" + title + "】 总额: " + getTotalInCoefficient() + " (" + this.total + "," + this.coefficient.toPlainString() + ")" + message;
+            return "\n【" + title + "】 总额: " + (getTotalInCoefficient() /100.0) + " (" + (this.total / 100.0) + "," + this.coefficient.toPlainString() + ")" + message;
         }
     }
 

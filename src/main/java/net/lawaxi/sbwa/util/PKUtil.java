@@ -16,7 +16,7 @@ public class PKUtil {
     public static String getOutput(String group_me, long feeAmount_me, JSONObject pk) {
         String a = "\n---------\n【PK】" + pk.getStr("name");
 
-        List<PKOpponent> opponents = PKUtil.getOpponents(pk.getJSONArray("opponents"));
+        List<PKOpponent> opponents = getOpponents(pk.getJSONArray("opponents"));
         boolean group_game = false;
 
         for (PKOpponent opponent : opponents) {
@@ -42,8 +42,10 @@ public class PKUtil {
             }
 
 
+            List<PKGroup> g2s = new ArrayList(groups2.values());
+            g2s.sort((a1, a2) -> (a2.getTotalInCoefficient() - a1.getTotalInCoefficient() > 0 ? 1 : -1));
             //整理组
-            for (PKGroup g : (PKGroup[]) groups2.values().stream().sorted((a1, a2) -> (a2.getTotalInCoefficient() - a1.getTotalInCoefficient() > 0 ? 1 : -1)).toArray()) {
+            for (PKGroup g : g2s) {
                 a += g.getMessage();
             }
 
