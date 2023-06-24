@@ -52,7 +52,7 @@ public class listener extends SimpleListenerHost {
                                 List<Gift2> a = lottery.draw(pay, 1L);
                                 if (a.size() > 0) {
                                     group.sendMessage(new At(event.getSender().getId())
-                                            .plus(NewWeidianSenderHandler.getOutput(a, group)));
+                                            .plus(NewWeidianSenderHandler.getLotteryOutput(a, group)));
                                 }
                             }
                         }
@@ -77,7 +77,7 @@ public class listener extends SimpleListenerHost {
                                 item,
                                 group,
                                 10
-                        ));
+                        ).getMessage());
                     } else {
                         group.sendMessage("获取失败");
                     }
@@ -85,15 +85,8 @@ public class listener extends SimpleListenerHost {
                 //代理未提交cookie群的pk播报
                 else {
                     if (pk.getLong("stock", 0L) != 0L) {
-
-                        String a = "【PK】" + pk.getStr("name")
-                                + "\n进度: " + (PKUtil.meAsOpponent(pk).feeAmount / 100.0)
-                                + "\n---------";
-                        for (PKOpponent opponent : PKUtil.getOpponents(pk.getJSONArray("opponents"))) {
-                            a += "\n" + opponent.name + ": " + (opponent.feeAmount / 100.0);
-                        }
-
-                        group.sendMessage(a);
+                        group.sendMessage("【PK】" + pk.getStr("name")
+                                + PKUtil.getOutput(pk.getStr("pk_group", null), PKUtil.meAsOpponent(pk).feeAmount, pk));
                     } else {
                         group.sendMessage("获取失败");
                     }

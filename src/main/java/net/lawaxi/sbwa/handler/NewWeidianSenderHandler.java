@@ -3,12 +3,13 @@ package net.lawaxi.sbwa.handler;
 import cn.hutool.json.JSONObject;
 import net.lawaxi.handler.WeidianSenderHandler;
 import net.lawaxi.model.WeidianItem;
+import net.lawaxi.model.WeidianItemMessage;
 import net.lawaxi.model.WeidianOrder;
+import net.lawaxi.model.WeidianOrderMessage;
 import net.lawaxi.sbwa.ShitBoyWeidianAddon;
 import net.lawaxi.sbwa.config.ConfigConfig;
 import net.lawaxi.sbwa.model.Gift2;
 import net.lawaxi.sbwa.model.Lottery2;
-import net.lawaxi.sbwa.model.PKOpponent;
 import net.lawaxi.sbwa.util.PKUtil;
 import net.mamoe.mirai.contact.Group;
 import net.mamoe.mirai.message.data.Message;
@@ -31,38 +32,35 @@ public class NewWeidianSenderHandler extends WeidianSenderHandler {
     }
 
     @Override
-    public Message executeItemMessages(WeidianItem item, Group group, int pickAmount) {
-        Message m = super.executeItemMessages(item, group, pickAmount);
+    public WeidianItemMessage executeItemMessages(WeidianItem item, Group group, int pickAmount) {
+        WeidianItemMessage m = super.executeItemMessages(item, group, pickAmount);
+        long feeAmount_me = m.amountTotal;
+
         JSONObject[] pks = ConfigConfig.INSTANCE.getPkByGroupIdAndItemId(group.getId(), item.id);
         for (JSONObject pk : pks) {
-            String a = "\n---------\n【PK】" + pk.getStr("name");
-            for (PKOpponent opponent : PKUtil.getOpponents(pk.getJSONArray("opponents"))) {
-                a += "\n" + opponent.name + ": " + (opponent.feeAmount / 100.0);
-            }
-
-            m = m.plus(a);
+            m.setMessage(m.getMessage().plus(PKUtil.getOutput(pk.getStr("pk_group", null), feeAmount_me, pk)));
         }
         return m;
     }
 
     @Override
-    public Message executeOrderMessage(WeidianOrder order, Group group) {
-        Message m = super.executeOrderMessage(order, group);
+    public WeidianOrderMessage executeOrderMessage(WeidianOrder order, Group group) {
+        WeidianOrderMessage m = super.executeOrderMessage(order, group);
         Lottery2[] lotteries = ConfigConfig.INSTANCE.getLotterysByGroupIdAndItemId(group.getId(), order.itemID);
         for (Lottery2 lottery : lotteries) {
             List<Gift2> a = lottery.draw(order.price, order.buyerID);
             if (a.size() > 0) {
-                m = m.plus("\n---------\n").plus(getOutput(a, group));
+                m.setMessage(m.getMessage().plus("\n---------\n").plus(getLotteryOutput(a, group)));
             }
         }
         return m;
     }
 
-    public static Message getOutput(List<Gift2> a, Group group) {
+    public static Message getLotteryOutput(List<Gift2> a, Group group) {
         Message m = new PlainText("");
 
         try {
-            InputStream i = getFrontPic(a);
+            InputStream i = getGiftsFrontPic(a);
             if (i != null) {
                 m = m.plus(group.uploadImage(ExternalResource.create(i)));
             }
@@ -78,7 +76,7 @@ public class NewWeidianSenderHandler extends WeidianSenderHandler {
     }
 
     //寻找有图的gift
-    private static InputStream getFrontPic(List<Gift2> gifts) {
+    private static InputStream getGiftsFrontPic(List<Gift2> gifts) {
         for (Gift2 g : gifts) {
             InputStream i = g.getPic();
             if (i != null)

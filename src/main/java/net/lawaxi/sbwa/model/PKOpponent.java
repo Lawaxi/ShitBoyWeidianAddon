@@ -8,11 +8,21 @@ public class PKOpponent {
     public final String name;
     public final long feeAmount;
     public final boolean hasCookie;
+    public String group;
 
     public PKOpponent(String name, long feeAmount, boolean hasCookie) {
         this.name = name;
         this.feeAmount = feeAmount;
         this.hasCookie = hasCookie;
+    }
+
+    public PKOpponent setGroup(String group) {
+        this.group = group;
+        return this;
+    }
+
+    public String getGroup() {
+        return group == null ? "未分组" : group;
     }
 
     public static PKOpponent construct(JSONObject opponent) {
@@ -40,6 +50,7 @@ public class PKOpponent {
             return new PKOpponent(name, opponent.getLong("stock") - f, false);
         }
 
-        return new PKOpponent(name, 1L, false);
+        PKOpponent out = new PKOpponent(name, 1L, false);
+        return opponent.containsKey("pk_group") ? out.setGroup(opponent.getStr("pk_group")) : out;
     }
 }
