@@ -49,9 +49,7 @@ public class PKOpponent {
                 f += WeidianHandler.INSTANCE.getTotalStock(item_id);
             }
             out = new PKOpponent(name, opponent.getLong("stock") - f, false);
-        }
-
-        else {
+        } else {
             out = new PKOpponent(name, 1L, false);
         }
         return opponent.containsKey("pk_group") ? out.setGroup(opponent.getStr("pk_group")) : out;

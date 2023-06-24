@@ -37,8 +37,7 @@ public class PKUtil {
                 if (!groups2.containsKey(opponent.getGroup())) {
                     groups2.put(opponent.getGroup(), PKGroup.construct(opponent.getGroup(), group_properties));
                 }
-                groups2.get(opponent.getGroup()).appendPrice(opponent.feeAmount);
-                groups2.get(opponent.getGroup()).addMessage(opponent.name, opponent.feeAmount);
+                groups2.get(opponent.getGroup()).addOpponent(opponent);
             }
 
 
