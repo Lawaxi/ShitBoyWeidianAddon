@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "net.lawaxi"
-version = "0.1.1-test3"
+version = "0.1.1-test5"
 
 repositories {
     maven("https://maven.aliyun.com/repository/public")
@@ -15,6 +15,6 @@ repositories {
 }
 
 dependencies {
-    implementation ("cn.hutool:hutool-all:5.8.18")
-    implementation(files("libs/shitboy-0.1.9.mirai2.jar"))
+    api ("cn.hutool:hutool-all:5.8.18")
+    api(files("libs/shitboy-0.1.9.mirai2.jar"))
 }

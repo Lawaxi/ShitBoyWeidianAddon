@@ -15,7 +15,8 @@ public class Lottery2 {
     public final BigDecimal fee;
     public final long[] groupIds;
     public final long[] item_ids;
-    public final List<Map.Entry<Integer, Gift2>> map;
+    private final List<Map.Entry<Integer, Gift2>> map;
+    private final Gift2[] gifts;
     public ConfigLotteryDocument document;
 
     public Lottery2(String lotteryId, String name, BigDecimal fee, long[] groupIds, long[] itemIds, List<Map.Entry<Integer, Gift2>> map, ConfigLotteryDocument document) {
@@ -26,6 +27,12 @@ public class Lottery2 {
         this.item_ids = itemIds;
         this.map = map;
         this.document = document;
+
+        List<Gift2> g = new ArrayList<>();
+        for (Map.Entry<Integer, Gift2> g1 : this.map) {
+            g.add(g1.getValue());
+        }
+        this.gifts = g.toArray(new Gift2[0]);
     }
 
     public List<Gift2> draw(double pay, long buyerId) {
@@ -50,13 +57,72 @@ public class Lottery2 {
 
     public Gift2[] getOwnedGifts(long buyerId) {
         List<Gift2> a = new ArrayList<>();
-        for (String id : this.document.getData().getGiftIds(buyerId)) {
+        for (String id : document.getData().getGiftIds(buyerId)) {
             Gift2 g = getGiftById(id);
             if (g != null)
                 a.add(g);
         }
         a.sort(Comparator.comparingInt(b -> b.index));
         return a.toArray(new Gift2[0]);
+    }
+
+    //owned用于编号全局拥有卡，用于查询，填入null忽略此功能
+    public String checkOwnedGifts(long buyerId, boolean specifically, List<OwnedGift> owned) {
+        String o = "【" + name + "】";
+        String specific = "";
+
+        int length = gifts.length;
+        String[] ids = new String[gifts.length];
+        int[] counts = new int[gifts.length];
+        for (int i = 0; i < length; i++) {
+            ids[i] = gifts[i].id;
+            counts[i] = 0;
+        }
+
+        for (String id : document.getData().getGiftIds(buyerId)) {
+            for (int i = 0; i < length; i++) {
+                if (ids[i].equals(id)) {
+                    counts[i]++;
+                }
+            }
+        }
+
+        String quality_current = "";
+        int quality_current_total = 0;
+        int quality_current_has = 0;
+        for (int i = 0; i < length; i++) {
+            if (!quality_current.equals(gifts[i].quality)) {
+                if (quality_current_total != 0) {
+                    o += "\n[" + quality_current + "]" + quality_current_has + "/" + quality_current_total;
+                }
+
+                quality_current = gifts[i].quality;
+                quality_current_total = 0;
+                quality_current_has = 0;
+            }
+
+            quality_current_total++;
+            if (counts[i] > 0) {
+                quality_current_has++;
+                if (owned != null) {
+                    owned.add(gifts[i].owned().setAmount(counts[i]));
+                }
+
+                if (specifically) {
+                    specific += "\n" + (owned == null ? "" : owned.size() + ".") + gifts[i].getTitle() + "*" + counts[i];
+                }
+            }
+        }
+        if (quality_current_total != 0) {
+            o += "\n[" + quality_current + "]" + quality_current_has + "/" + quality_current_total;
+        }
+
+        if (specifically) {
+            return o + specific;
+        } else {
+            return o;
+        }
+
     }
 
     public Gift2 getRandomGift() {
@@ -73,11 +139,16 @@ public class Lottery2 {
     }
 
     public Gift2 getGiftById(String id) {
-        for (Map.Entry<Integer, Gift2> g : map) {
-            if (g.getValue().id.equals(id))
-                return g.getValue();
+        for (Gift2 g : gifts) {
+            if (g.id.equals(id)) {
+                return g;
+            }
         }
         return null;
+    }
+
+    public Gift2[] getGifts() {
+        return gifts;
     }
 
     public static Lottery2 construct(String lottery_id, ConfigLotteryDocument document, JSONObject lottery) {

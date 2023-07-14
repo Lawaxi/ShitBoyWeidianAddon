@@ -21,6 +21,7 @@ import java.util.Map;
 
 public class ConfigConfig extends SimpleSettingConfig {
     public static ConfigConfig INSTANCE;
+    public boolean proxy_lgyzero;
     //抽卡数据总表
     public ArrayList<ConfigLotteryDocument> lotteryDocuments;
     //pk数据总表
@@ -37,12 +38,15 @@ public class ConfigConfig extends SimpleSettingConfig {
 
     @Override
     public void construct(Setting setting) {
+        setting.set("proxy_lgyzero", "false");
         setting.setByGroup("documents", "lottery", "[]");
         setting.setByGroup("binding", "lottery", "{}");
     }
 
     @Override
     public void init() {
+        proxy_lgyzero = setting.getBool("proxy_lgyzero", false);
+
         File documentFolder = Common.I.documentFolder;
 
         lotteryDocuments = new ArrayList<>();

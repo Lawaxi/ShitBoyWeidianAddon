@@ -6,7 +6,7 @@ import net.lawaxi.sbwa.util.Common;
 import java.io.File;
 import java.io.InputStream;
 
-public class Gift2 {
+public class Gift2 implements Gift {
     public final String lottery_id;
     public final String id;
     public final String name;
@@ -25,6 +25,7 @@ public class Gift2 {
         this.picFile = new File(new File(Common.I.picFolder, lotteryId), pic);
     }
 
+    @Override
     public InputStream getPic() {
         if (this.picFile.exists()) {
             return FileUtil.getInputStream(this.picFile);
@@ -32,7 +33,12 @@ public class Gift2 {
         return null;
     }
 
+    @Override
     public String getTitle() {
         return String.format("[%s]%s", this.quality, this.name);
+    }
+
+    public OwnedGift owned() {
+        return new OwnedGift(this.picFile, getTitle());
     }
 }

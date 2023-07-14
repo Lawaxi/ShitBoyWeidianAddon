@@ -135,7 +135,7 @@ Mirai-Console插件，依赖[Lawaxi/Shitboy](https://github.com/Lawaxi/ShitBoy)�
 - test4 BUG修复（单个sku）
 - test5 BUG修复（十倍金额）
 - test6 对手增减库存时用真实数据修正
-- test7 适配Shitboy017t20
+- test7 适配Shitboy0.1.7t20
 
 ### 0.1.1
 
@@ -143,3 +143,6 @@ Mirai-Console插件，依赖[Lawaxi/Shitboy](https://github.com/Lawaxi/ShitBoy)�
 - PK分组
 - PK播报重置
 - test3 排序
+- test5 适配Shitboy0.1.10
+- test5 查卡更新
+- test5 在配置中将proxy_lgyzero设置为true后使用“代查”指令可代查Lgyzero平台抽卡

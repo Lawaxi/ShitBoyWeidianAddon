@@ -8,13 +8,12 @@ import net.lawaxi.model.WeidianItem;
 import net.lawaxi.sbwa.config.ConfigConfig;
 import net.lawaxi.sbwa.handler.NewWeidianSenderHandler;
 import net.lawaxi.sbwa.handler.WeidianHandler;
-import net.lawaxi.sbwa.model.Gift2;
-import net.lawaxi.sbwa.model.Lottery2;
-import net.lawaxi.sbwa.model.PKOpponent;
+import net.lawaxi.sbwa.model.*;
 import net.lawaxi.sbwa.util.PKUtil;
 import net.lawaxi.util.CommandOperator;
 import net.mamoe.mirai.Bot;
 import net.mamoe.mirai.contact.Group;
+import net.mamoe.mirai.contact.Member;
 import net.mamoe.mirai.contact.User;
 import net.mamoe.mirai.event.EventHandler;
 import net.mamoe.mirai.event.ListeningStatus;
@@ -22,6 +21,7 @@ import net.mamoe.mirai.event.SimpleListenerHost;
 import net.mamoe.mirai.event.events.GroupMessageEvent;
 import net.mamoe.mirai.event.events.UserMessageEvent;
 import net.mamoe.mirai.message.data.At;
+import net.mamoe.mirai.message.data.PlainText;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -92,7 +92,7 @@ public class listener extends SimpleListenerHost {
                     }
                 }
             }
-        } else if (message.startsWith("绑定")) {
+        } else if (message.startsWith("绑定") && ConfigConfig.INSTANCE.getLotteryByGroupId(group.getId()).length > 0) {
             try {
                 Long buyerId = Long.valueOf(message.substring(message.indexOf(" ") + 1));
                 ConfigConfig.INSTANCE.bindBuyerId("" + event.getSender().getId(), buyerId);
@@ -101,32 +101,62 @@ public class listener extends SimpleListenerHost {
                 group.sendMessage(new At(event.getSender().getId()).plus("请输入正确的微店id"));
             }
         } else if (message.equals("查卡")) {
-            long buyerId = ConfigConfig.INSTANCE.getBindingBuyerId("" + event.getSender().getId());
-            if (buyerId != 0L) {
-                //当前抽卡
-                String current = "";
-                Lottery2[] lotteries = ConfigConfig.INSTANCE.getLotteryByGroupId(group.getId());
-                if (lotteries.length > 0) {
-                    for (int i = 0; i < lotteries.length; i++) {
-                        if (i != 0) {
-                            current += "\n+++++++++\n";
-                        }
-                        current += "【" + lotteries[i].name + "】";
-                        for (Gift2 gift : lotteries[i].getOwnedGifts(buyerId)) {
-                            current += "\n" + gift.getTitle();
-                        }
-                    }
-
-                    //历史抽卡记录暂不支持查看
-                    group.sendMessage(new At(event.getSender().getId()).plus(current));
-                }
-
-            } else {
-                group.sendMessage(new At(event.getSender().getId()).plus("请先输入“绑定 <微店ID>”绑定"));
+            if (!checkCardInGroup(group, event.getSender()) && ShitBoyWeidianAddon.config.proxy_lgyzero) {
+                checkProxyCardInGroup(group, event.getSender());
             }
+        } else if (message.equals("代查") && ShitBoyWeidianAddon.config.proxy_lgyzero) {
+            checkProxyCardInGroup(group, event.getSender());
         }
 
         return ListeningStatus.LISTENING;
+    }
+
+    //返回值为当前群是否有抽卡
+    private boolean checkCardInGroup(Group group, Member sender) {
+        Lottery2[] lotteries = ConfigConfig.INSTANCE.getLotteryByGroupId(group.getId());
+        if (lotteries.length > 0) {
+            long buyerId = ConfigConfig.INSTANCE.getBindingBuyerId("" + sender.getId());
+            if (buyerId != 0L) {
+                //当前抽卡
+                String out = "";
+                for (int i = 0; i < lotteries.length; i++) {
+                    if (i != 0) {
+                        out += "\n+++++++++\n";
+                    }
+                    out += lotteries[i].checkOwnedGifts(buyerId, false, null);
+                }
+
+                group.sendMessage(new At(sender.getId()).plus("\n" + out + "\n具体数据可私信机器人“查卡”查看"));
+                //历史抽卡记录暂不支持查看
+            } else {
+                group.sendMessage(new At(sender.getId()).plus("请先输入“绑定 <微店ID>”绑定"));
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private void checkProxyCardInGroup(Group group, Member sender) {
+        long buyerId = ConfigConfig.INSTANCE.getBindingBuyerId("" + sender.getId());
+        if (buyerId != 0L) {
+            JSONObject inquired = ShitBoyWeidianAddon.lgyzeroHandler.inquireCard(buyerId);
+            if (inquired != null) {
+                String out = "";
+                JSONObject infos = inquired.getJSONObject("progressInfo");
+                for (String key : infos.keySet()) {
+                    if (group.getName().contains(key.replace("应援会", ""))) {
+                        if (!out.equals("")) {
+                            out += "\n+++++++++\n";
+                        }
+                        out += ShitBoyWeidianAddon.lgyzeroHandler.checkOwnedGifts(inquired, key, false, null);
+                    }
+                }
+                if (!out.equals("")) {
+                    group.sendMessage(new At(sender.getId()).plus("\n" + out + "\n具体数据可私信机器人“代查”查看"));
+                }
+            }
+        }
+
     }
 
 
@@ -194,23 +224,9 @@ public class listener extends SimpleListenerHost {
                         sender.sendMessage("您没有绑定过微店id");
                     }
                 } else if (args[1].equals("查卡")) {
-                    long buyerId = ConfigConfig.INSTANCE.getBindingBuyerId("" + sender.getId());
-                    if (buyerId != 0L) {
-                        //当前抽卡
-                        String current = "在当前正在进行的抽卡中：";
-                        for (Lottery2 lottery : ConfigConfig.INSTANCE.getAllNonNullLotterys()) {
-                            current += "\n【" + lottery.name + "】";
-                            for (Gift2 gift : lottery.getOwnedGifts(buyerId)) {
-                                current += "\n" + gift.getTitle();
-                            }
-                        }
-
-                        //历史抽卡记录暂不支持查看
-                        sender.sendMessage(current);
-
-                    } else {
-                        sender.sendMessage("您没有绑定过微店id，请使用“/抽卡 绑定 <微店ID>”绑定");
-                    }
+                    checkCard(sender, message.substring(message.indexOf("查卡")));
+                } else if (args[1].equals("代查") && ShitBoyWeidianAddon.config.proxy_lgyzero) {
+                    checkProxyCard(sender, message.substring(message.indexOf("代查")));
                 } else {
                     sender.sendMessage(getHelp(1));
                 }
@@ -302,6 +318,11 @@ public class listener extends SimpleListenerHost {
                     sender.sendMessage(getHelp(2));
                 }
             }
+        } else if (message.startsWith("查卡")) {
+            checkCard(sender, message);
+
+        } else if (message.startsWith("代查") && ShitBoyWeidianAddon.config.proxy_lgyzero) {
+            checkProxyCard(sender, message);
         }
         return ListeningStatus.LISTENING;
     }
@@ -319,7 +340,8 @@ public class listener extends SimpleListenerHost {
                     + "(私信 管理员)/抽卡 全部\n"
                     + "(私信)/抽卡 绑定 <微店ID>\n"
                     + "(私信)/抽卡 解绑\n"
-                    + "(私信)/抽卡 查卡\n";
+                    + "(私信)/抽卡 查卡\n"
+                    + (ShitBoyWeidianAddon.config.proxy_lgyzero ? "(私信)/抽卡 代查\n" : "");
         }
         return "【微店PK相关】\n"
                 + "pk\n"
@@ -349,7 +371,7 @@ public class listener extends SimpleListenerHost {
         return "请按规定格式输入json";
     }
 
-    public String editDocument(Lottery2 lottery, String arg2, long qqId, Bot bot) {
+    private String editDocument(Lottery2 lottery, String arg2, long qqId, Bot bot) {
         try {
             JSONObject o = JSONUtil.parseObj(arg2);
             long g = administratingValidJson(o, qqId, bot);
@@ -365,29 +387,7 @@ public class listener extends SimpleListenerHost {
         return "修改失败，请按规定格式输入json";
     }
 
-    //可以管理的抽卡
-    public List<Lottery2> getLotteryAdministrating(long qqId, Bot bot, String id) {
-        List<Lottery2> lotteries = new ArrayList<>();
-        for (Lottery2 lottery : (id == null ?
-                ConfigConfig.INSTANCE.getAllNonNullLotterys() :
-                new Lottery2[]{ConfigConfig.INSTANCE.getLotteryById(id)})) {
-            if (lottery.groupIds.length == 0)
-                continue;
-
-            boolean n = true;
-            for (long group : lottery.groupIds) {
-                if (!ShitBoyWeidianAddon.INSTANCE_SHITBOY.getConfig().isAdmin(bot.getGroup(group), qqId)) {
-                    n = false;
-                }
-            }
-            if (n)
-                lotteries.add(lottery);
-        }
-        return lotteries;
-    }
-
-
-    public String newPK(String arg2, long qqId, Bot bot) {
+    private String newPK(String arg2, long qqId, Bot bot) {
         try {
             JSONObject o = JSONUtil.parseObj(arg2);
             long g = administratingValidJson(o, qqId, bot);
@@ -410,6 +410,117 @@ public class listener extends SimpleListenerHost {
         return "请按规定格式输入json";
     }
 
+    private void checkCard(User sender, String message) {
+        long buyerId = ConfigConfig.INSTANCE.getBindingBuyerId("" + sender.getId());
+        if (buyerId != 0L) {
+            String out = "在当前正在进行的抽卡中：";
+            List<OwnedGift> owned = new ArrayList<>();
+            for (Lottery2 lottery : ConfigConfig.INSTANCE.getAllNonNullLotterys()) {
+                int fore = owned.size();
+                String o0 = lottery.checkOwnedGifts(buyerId, true, owned);
+                if (owned.size() > fore) {
+                    out += "\n" + o0;
+                }
+            }
+
+            if (owned.size() == 0) {
+                sender.sendMessage("您未进行任何抽卡");
+                return;
+            }
+
+            //查特定卡
+            if (message.indexOf(" ") != -1) {
+                try {
+                    int index = Integer.valueOf(message.substring(message.indexOf(" ") + 1)) - 1;
+                    if (index < owned.size()) {
+                        sender.sendMessage(
+                                new PlainText(owned.get(index).title + "\n")
+                                        .plus(net.mamoe.mirai.contact.Contact.uploadImage(sender, owned.get(index).getPic()))
+                                        .plus("\n当前拥有" + owned.get(index).amount + "张")
+                        );
+                    } else {
+                        sender.sendMessage("最大编号" + (owned.size() - 1));
+                    }
+                    return;
+                } catch (Exception e) {
+
+                }
+            }
+            //查全部
+            sender.sendMessage(out + "\n输入“查卡 <编号>”可获取具体卡面图片");
+
+        } else {
+            sender.sendMessage("请先输入“/抽卡 绑定 <微店ID>”绑定");
+        }
+    }
+
+    private void checkProxyCard(User sender, String message) {
+        long buyerId = ConfigConfig.INSTANCE.getBindingBuyerId("" + sender.getId());
+        if (buyerId != 0L) {
+            List<OwnedProxyGift> owned = new ArrayList<>();
+            JSONObject inquired = ShitBoyWeidianAddon.lgyzeroHandler.inquireCard(buyerId);
+            if (inquired != null) {
+                JSONObject infos = inquired.getJSONObject("progressInfo");
+                if (infos.keySet().size() == 0) {
+                    sender.sendMessage("您未进行任何抽卡");
+                    return;
+                }
+
+                String out = "";
+                for (String key : infos.keySet()) {
+                    if (!out.equals("")) {
+                        out += "\n+++++++++\n";
+                    }
+                    out += ShitBoyWeidianAddon.lgyzeroHandler.checkOwnedGifts(inquired, key, true, owned);
+                }
+
+                if (message.indexOf(" ") != -1) {
+                    try {
+                        int index = Integer.valueOf(message.substring(message.indexOf(" ") + 1)) - 1;
+                        if (index < owned.size()) {
+                            sender.sendMessage(
+                                    new PlainText(owned.get(index).title + "\n")
+                                            .plus(net.mamoe.mirai.contact.Contact.uploadImage(sender, owned.get(index).getPic()))
+                                            .plus("\n当前拥有" + owned.get(index).amount + "张\n官方查询网站：http://www.lgyzero.top/CardSystem/CardInqurie")
+                            );
+                        } else {
+                            sender.sendMessage("最大编号" + (owned.size() - 1));
+                        }
+                        return;
+                    } catch (Exception e) {
+
+                    }
+                }
+
+                sender.sendMessage("抽卡代查：\n" + out + "\n输入“代查 <编号>”可获取具体卡面图片\n官方查询网站：http://www.lgyzero.top/CardSystem/CardInqurie");
+            }
+        } else {
+            sender.sendMessage("请先输入“/抽卡 绑定 <微店ID>”绑定");
+        }
+    }
+
+
+    //可以管理的抽卡
+    public List<Lottery2> getLotteryAdministrating(long qqId, Bot bot, String id) {
+        List<Lottery2> lotteries = new ArrayList<>();
+        for (Lottery2 lottery : (id == null ?
+                ConfigConfig.INSTANCE.getAllNonNullLotterys() :
+                new Lottery2[]{ConfigConfig.INSTANCE.getLotteryById(id)})) {
+            if (lottery.groupIds.length == 0)
+                continue;
+
+            boolean n = true;
+            for (long group : lottery.groupIds) {
+                if (!ShitBoyWeidianAddon.INSTANCE_SHITBOY.getConfig().isAdmin(bot.getGroup(group), qqId)) {
+                    n = false;
+                }
+            }
+            if (n)
+                lotteries.add(lottery);
+        }
+        return lotteries;
+    }
+
     public List<Map.Entry<String, JSONObject>> getPkAdministrating(long qqId, Bot bot, String id) {
         List<Map.Entry<String, JSONObject>> pks = new ArrayList<>();
         for (Map.Entry<String, JSONObject> pk : ConfigConfig.INSTANCE.getAllValidPk()) {
@@ -430,19 +541,17 @@ public class listener extends SimpleListenerHost {
     }
 
     private String[] splitPrivateCommand(String command) {
-        if (command.contains(" ")) {
-            String[] out = new String[3];
-            out[0] = command.substring(0, command.indexOf(" "));
-            command = command.substring(command.indexOf(" ") + 1);
-            if (command.contains(" ")) { //三份
-                out[1] = command.substring(0, command.indexOf(" "));
-                out[2] = command.substring(command.indexOf(" ") + 1);
-                return out;
-            } else { //两份
-                out[1] = command;
-                return out;
+        String[] out = new String[3];
+        int i = 0;
+        for (; i < 2; i++) {
+            if (command.contains(" ")) {
+                out[i] = command.substring(0, command.indexOf(" "));
+                command = command.substring(command.indexOf(" ") + 1);
+            } else {
+                break;
             }
         }
-        return null;
+        out[i] = command;
+        return out;
     }
 }

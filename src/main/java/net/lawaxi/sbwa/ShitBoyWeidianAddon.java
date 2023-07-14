@@ -2,6 +2,7 @@ package net.lawaxi.sbwa;
 
 import net.lawaxi.Shitboy;
 import net.lawaxi.sbwa.config.ConfigConfig;
+import net.lawaxi.sbwa.handler.LgyzeroHandler;
 import net.lawaxi.sbwa.handler.NewWeidianSenderHandler;
 import net.lawaxi.sbwa.handler.WeidianHandler;
 import net.lawaxi.sbwa.util.Common;
@@ -16,9 +17,10 @@ public final class ShitBoyWeidianAddon extends JavaPlugin {
     public static Shitboy INSTANCE_SHITBOY;
     public static ConfigConfig config;
     public static WeidianHandler weidianHandler;
+    public static LgyzeroHandler lgyzeroHandler;
 
     private ShitBoyWeidianAddon() {
-        super(new JvmPluginDescriptionBuilder("net.lawaxi.shitboyWA", "0.1.1-test3")
+        super(new JvmPluginDescriptionBuilder("net.lawaxi.shitboyWA", "0.1.1-test5")
                 .name("ShitBoyWeidianAddon")
                 .author("delay")
                 .dependsOn("net.lawaxi.shitboy", false)
@@ -29,8 +31,12 @@ public final class ShitBoyWeidianAddon extends JavaPlugin {
     public void onEnable() {
         if (loadShitboy()) {
             initConfig();
-            INSTANCE_SHITBOY.handlerWeidianSender = new NewWeidianSenderHandler();
+            weidianHandler = new WeidianHandler();
+            if (config.proxy_lgyzero) {
+                lgyzeroHandler = new LgyzeroHandler();
+            }
 
+            INSTANCE_SHITBOY.handlerWeidianSender = new NewWeidianSenderHandler();
             GlobalEventChannel.INSTANCE.registerListenerHost(new listener());
         }
     }
@@ -38,7 +44,6 @@ public final class ShitBoyWeidianAddon extends JavaPlugin {
     private void initConfig() {
         new Common(getConfigFolder());
         config = new ConfigConfig(resolveConfigFile("config.setting"));
-        weidianHandler = new WeidianHandler();
     }
 
     private boolean loadShitboy() {
