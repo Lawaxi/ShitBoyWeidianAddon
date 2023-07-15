@@ -146,3 +146,4 @@ Mirai-Console插件，依赖[Lawaxi/Shitboy](https://github.com/Lawaxi/ShitBoy)�
 - test5 适配Shitboy0.1.10
 - test5 查卡更新
 - test5 在配置中将proxy_lgyzero设置为true后使用“代查”指令可代查Lgyzero平台抽卡
+- test6 PK我方数据修正

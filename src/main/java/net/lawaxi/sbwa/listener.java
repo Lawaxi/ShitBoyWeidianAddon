@@ -278,14 +278,25 @@ public class listener extends SimpleListenerHost {
                         String id = arg2[0];
                         if (arg2[1].equals("我")) {
                             if (PKUtil.doGroupsHaveCookie(pks.get(0).getValue())) {
-                                sender.sendMessage("自己金额为cookie统计无法修正，如有错误请联系管理员");
-                            } else {
-                                long balance = Long.valueOf(arg2[2]).longValue();
-                                long stock_pre = pks.get(0).getValue().getLong("stock");
-                                long balance_pre = PKUtil.meAsOpponent(pks.get(0).getValue()).feeAmount;
-                                long stock = balance - balance_pre + stock_pre;
-                                ConfigConfig.INSTANCE.editStock(id, stock);
-                                sender.sendMessage("修正成功");
+                                //自己数据修正采用偏差值方式(如换链接)
+                                try {
+                                    ConfigConfig.INSTANCE.modify(id, Long.valueOf(arg2[2]).longValue());
+                                }catch (NumberFormatException e){
+                                    sender.sendMessage("金额以分为单位");
+                                }
+                            }
+                            //其他人&无cookie时自己数据采用修改库存方式
+                            else {
+                                try {
+                                    long balance = Long.valueOf(arg2[2]).longValue();
+                                    long stock_pre = pks.get(0).getValue().getLong("stock");
+                                    long balance_pre = PKUtil.meAsOpponent(pks.get(0).getValue()).feeAmount;
+                                    long stock = balance - balance_pre + stock_pre;
+                                    ConfigConfig.INSTANCE.editStock(id, stock);
+                                    sender.sendMessage("修正成功");
+                                }catch (NumberFormatException e){
+                                    sender.sendMessage("金额以分为单位");
+                                }
                             }
                         } else {
                             JSONObject opponent = ConfigConfig.INSTANCE.getPkOpponent(id, arg2[1]);

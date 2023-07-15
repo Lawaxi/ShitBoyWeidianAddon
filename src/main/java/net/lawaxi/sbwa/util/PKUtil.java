@@ -26,7 +26,7 @@ public class PKUtil {
             }
         }
 
-        opponents.add(new PKOpponent("我", feeAmount_me, false)
+        opponents.add(new PKOpponent("我", feeAmount_me + pk.getLong("deviation",0L), false)
                 .setGroup(group_me));
 
         if (group_game) {

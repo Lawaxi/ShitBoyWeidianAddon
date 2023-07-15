@@ -218,7 +218,7 @@ public class ConfigConfig extends SimpleSettingConfig {
         if (!isValidPK(json))
             return "null";
 
-        if (!PKUtil.doGroupsHaveCookie(json)) {
+        if (!PKUtil.doGroupsHaveCookie(json) && !json.containsKey("stock")) {
             long stock = 0;
             for (Long item_id : json.getBeanList("item_ids", Long.class)) {
                 stock += WeidianHandler.INSTANCE.getTotalStock(item_id);
@@ -233,7 +233,7 @@ public class ConfigConfig extends SimpleSettingConfig {
         for (Object o : json.getJSONArray("opponents").toArray()) {
             JSONObject opponent = JSONUtil.parseObj(o);
             if (opponent.containsKey("item_id")) {
-                boolean success = opponent.containsKey("cookie");
+                boolean success = opponent.containsKey("cookie") || opponent.containsKey("stock");
                 if (!success) {
                     long stock = 0;
                     for (Long item_id : opponent.getBeanList("item_id", Long.class)) {
@@ -303,6 +303,22 @@ public class ConfigConfig extends SimpleSettingConfig {
         return null;
     }
 
+    public boolean modify(String id, long deviation){
+        try {
+            if (pk.containsKey(id)) {
+                JSONObject o = pk.get(id);
+                o.set("deviation",o.getLong("deviation", 0L)+deviation);
+                pk.put(id, o);
+                setting.setByGroup(id, "pk", o.toString());
+                save();
+                return true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
     public boolean editStock(String id, long stock) {
         try {
             if (pk.containsKey(id)) {
