@@ -20,7 +20,7 @@ public final class ShitBoyWeidianAddon extends JavaPlugin {
     public static LgyzeroHandler lgyzeroHandler;
 
     private ShitBoyWeidianAddon() {
-        super(new JvmPluginDescriptionBuilder("net.lawaxi.shitboyWA", "0.1.1-test6")
+        super(new JvmPluginDescriptionBuilder("net.lawaxi.shitboyWA", "0.1.1-test7")
                 .name("ShitBoyWeidianAddon")
                 .author("delay")
                 .dependsOn("net.lawaxi.shitboy", false)

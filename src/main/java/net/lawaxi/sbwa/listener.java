@@ -269,7 +269,23 @@ public class listener extends SimpleListenerHost {
                         ConfigConfig.INSTANCE.rmPk(pks.get(0).getKey());
                         sender.sendMessage("删除成功");
                     }
-                } else if (args[1].equals("修正") && args[2].split(" ").length == 3) {
+                } else if(args[1].equals("增加") && args[2].split(" ").length == 2){
+                    //自己数据修正采用偏差值方式(如换链接)
+                    String[] arg2 = args[2].split(" ");
+                    List<Map.Entry<String, JSONObject>> pks = getPkAdministrating(sender.getId(), event.getBot(), arg2[0]);
+                    if (pks.size() == 0) {
+                        sender.sendMessage("无对应此id的PK或您不可以管理");
+                    } else {
+                        String id = arg2[0];
+                        try {
+                            ConfigConfig.INSTANCE.modify(id, Long.valueOf(arg2[1]).longValue());
+                            sender.sendMessage("修正成功");
+                        }catch (NumberFormatException e){
+                            sender.sendMessage("金额以分为单位");
+                        }
+                    }
+                }
+                else if (args[1].equals("修正") && args[2].split(" ").length == 3) {
                     String[] arg2 = args[2].split(" ");
                     List<Map.Entry<String, JSONObject>> pks = getPkAdministrating(sender.getId(), event.getBot(), arg2[0]);
                     if (pks.size() == 0) {
@@ -278,12 +294,7 @@ public class listener extends SimpleListenerHost {
                         String id = arg2[0];
                         if (arg2[1].equals("我")) {
                             if (PKUtil.doGroupsHaveCookie(pks.get(0).getValue())) {
-                                //自己数据修正采用偏差值方式(如换链接)
-                                try {
-                                    ConfigConfig.INSTANCE.modify(id, Long.valueOf(arg2[2]).longValue());
-                                }catch (NumberFormatException e){
-                                    sender.sendMessage("金额以分为单位");
-                                }
+                                sender.sendMessage("自己数据请采用增量方式修改，“/pk 增加 "+id+" <增量/分>”");
                             }
                             //其他人&无cookie时自己数据采用修改库存方式
                             else {
@@ -361,7 +372,8 @@ public class listener extends SimpleListenerHost {
                 + "(私信)/pk 获取 <pkID>\n"
                 + "(私信)/pk 删除 <pkID>\n"
                 + "(私信)/pk 修正 <pkID> <对手> <金额/分>\n"
-                + "(私信)/pk 修正 <pkID> 我 <金额/分>\n"
+                + "(未提交cookie时)(私信)/pk 修正 <pkID> 我 <金额/分>\n"
+                + "(已提交cookie时)(私信)/pk 增加 <pkID> <增量/分>\n"
                 + "(私信)/pk 全部\n";
     }
 
