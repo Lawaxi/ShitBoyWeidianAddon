@@ -71,6 +71,14 @@ Mirai-Console插件，依赖[Lawaxi/Shitboy](https://github.com/Lawaxi/ShitBoy)�
 
 ### PK json格式（通过“/抽卡 新建 <json>”提交）
 
+#### 指令的网页自助生成工具：http://shitboy.lawaxi.net/
+
+使用此网站可以自助式生成新建PK的json/指令，无需学习下方格式
+
+开源：[Lawaxi/ShitBoyWebAssistant](https://github.com/Lawaxi/ShitBoyWebAssistant)
+
+![](screenshots/web_assistant.png)
+
 ~~~json5
 {"name":"","groups":[],"item_id":0,"opponents":[{"name":"","item_id":[],"cookie":""}]}
 ~~~
@@ -99,11 +107,11 @@ Mirai-Console插件，依赖[Lawaxi/Shitboy](https://github.com/Lawaxi/ShitBoy)�
   {
     "a": {
       "title": "Team X", //【可选】显示的组名，不填则显示组号如“a”，组名短的话可以直接作为组号甜
-      "coefficient": "1" //【可选】本组成员进度×系数
+      "coefficient": 1 //【可选】本组成员进度×系数
     },
     "b": {
       "title": "Team E",
-      "coefficient": "0.8"
+      "coefficient": 0.8
     }
   }         
 }
